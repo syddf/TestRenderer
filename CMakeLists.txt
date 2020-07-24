@@ -10,6 +10,8 @@ AUX_SOURCE_DIRECTORY(./Source SOURCE_LIST)
 foreach(target ${SOURCE_LIST})
 	list(APPEND SRC_LIST ${target})
 endforeach()
+list(APPEND SRC_LIST ${CMAKE_SOURCE_DIR}/External/FbxLoader/FBXFile.cpp)
+list(APPEND SRC_LIST ${CMAKE_SOURCE_DIR}/External/FbxLoader/FBXFile.h)
 ADD_EXECUTABLE(hello ${SRC_LIST})
 
 if (UNIX AND NOT APPLE)
