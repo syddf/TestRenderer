@@ -63,6 +63,11 @@ int main()
 	TriangleRasterizer<DistanceFieldRasterPolicy> DistanceFieldRasterizer(RasterPolicy);
 
 	StaticLightingMesh& mesh = LightingMeshVec[0];
+	std::vector<Triangle> Triangles;
+	mesh.GetTriangleVec(Triangles);
+	BVHTree BVHTree;
+	BVHTree.BuildBVHTree(Triangles);
+
 	for (int i = 0; i < mesh.Indices.size();)
 	{
 		StaticLightingVertex v0 = mesh.Vertices[mesh.Indices[i]];

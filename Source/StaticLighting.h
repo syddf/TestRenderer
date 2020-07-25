@@ -2,6 +2,7 @@
 
 #include "Prefix.h"
 #include "AssetImporter/ImportSceneData.h"
+#include "Geometry.h"
 
 struct StaticLightingVertex
 {
@@ -86,6 +87,17 @@ public:
 		for (size_t indIndex = IndexStartIndex; indIndex < IndexStartIndex + IndexCount; indIndex++)
 		{
 			Indices.push_back(SceneData.MeshData.IndicesVec[indIndex]);
+		}
+	}
+
+	void GetTriangleVec(std::vector<Triangle>& TriangleVec)
+	{
+		TriangleVec.resize(Indices.size() / 3);
+		for (int i = 0; i < TriangleVec.size(); i ++)
+		{
+			TriangleVec[i].P0 = Vertices[Indices[i * 3]].Position;
+			TriangleVec[i].P1 = Vertices[Indices[i * 3 + 1]].Position;
+			TriangleVec[i].P2 = Vertices[Indices[i * 3 + 2]].Position;
 		}
 	}
 

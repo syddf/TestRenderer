@@ -30,7 +30,7 @@ BVHNode * BVHTree::SplitNode(std::vector<Triangle>& TriangleVec, int Begin, int 
 	}
 
 	AABB TotalAABB;
-	for (size_t triIndex = 0; triIndex < TriangleVec.size(); triIndex++)
+	for (size_t triIndex = Begin; triIndex < End; triIndex++)
 	{
 		TotalAABB.Union(TriangleVec[triIndex].GetAABB());
 	}
@@ -46,9 +46,16 @@ BVHNode * BVHTree::SplitNode(std::vector<Triangle>& TriangleVec, int Begin, int 
 
 	Bucket Buckets[BucketCounts];
 
-	for (size_t i = 0; i < TriangleVec.size(); i++)
+	for (int i = 0; i < BucketCounts; i++)
 	{
-		int BucketIndex = (float)BucketCounts * (TotalAABB.Offset(TriangleVec[i].GetCentroid())[MaxAxis]);
+		Buckets[i].Count = 0;
+		Buckets[i].Bounding.Min = Point(0, 0, 0);
+		Buckets[i].Bounding.Max = Point(0, 0, 0);
+	}
+
+	for (size_t i = Begin; i < End; i++)
+	{
+		int BucketIndex = ((float)BucketCounts) * (TotalAABB.Offset(TriangleVec[i].GetCentroid())[MaxAxis]);
 		if (BucketIndex == BucketCounts) BucketIndex--;
 		Buckets[BucketIndex].Count++;
 		Buckets[BucketIndex].Bounding.Union(TriangleVec[i].GetAABB());
@@ -97,6 +104,22 @@ BVHNode * BVHTree::SplitNode(std::vector<Triangle>& TriangleVec, int Begin, int 
 		}
 	);
 	Mid = MidTriangle - &TriangleVec[0];
+
+	if (MinCost > End - Begin)
+	{
+		BVHNode* newNode = new BVHNode;
+		for (size_t Index = Begin; Index < End; Index++)
+		{
+			newNode->Bounding.Union(TriangleVec[Index].GetAABB());
+			newNode->Axis = 0;
+			newNode->LeftChild = nullptr;
+			newNode->RightChild = nullptr;
+			newNode->PrimitiveOffset = Begin;
+			newNode->PrimitiveCount = End - Begin;
+		}
+		NodeCount++;
+		return newNode;
+	}
 
 	BVHNode* NewNode = new BVHNode;
 	NodeCount++;
