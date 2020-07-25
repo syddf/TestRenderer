@@ -1,15 +1,23 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(OfflineRenderer)
+
+if(WIN32)
+    add_subdirectory(AssetImporter)
+endif()
+
 # project variables
 MESSAGE(STATUS "platform: ${CMAKE_SYSTEM_NAME}")
 include_directories(${CMAKE_SOURCE_DIR}/External/Vulkan/include)
 include_directories(${CMAKE_SOURCE_DIR}/External/Glfw/include)
 include_directories(${CMAKE_SOURCE_DIR}/External/glm)
+
 AUX_SOURCE_DIRECTORY(. SRC_LIST)
 FILE (GLOB SOURCE_LIST "./Source/*.cpp" "./Source/*.h")
 foreach(target ${SOURCE_LIST})
 	list(APPEND SRC_LIST ${target})
 endforeach()
+list(APPEND SRC_LIST "./AssetImporter/ImportAsset.h")
+list(APPEND SRC_LIST "./AssetImporter/ImportSceneData.h")
 ADD_EXECUTABLE(hello ${SRC_LIST})
 
 if (UNIX AND NOT APPLE)
