@@ -7,60 +7,7 @@
 #include "Source/Rasterize.h"
 #include "Source/StaticLighting.h"
 #include "Source/OutputImageHelper.h"
-
-#define EPSILON 0.0000001f
-
-struct Ray
-{
-public:
-    Point Origin;
-    Vec3 Direction;
-};
-
-struct Triangle
-{
-private:
-    Point P0;
-    Point P1;
-    Point P2;
-    
-    bool Intersect(Point& intersection, const Ray& ray)
-    {
-        Vec3 e1 = P1 - P0;
-        Vec3 e2 = P2 - P0;
-        
-        Vec3 P = glm::cross(ray.Direction, e2);
-        float det = glm::dot(e1, P);
-        if (det > -EPSILON && det < EPSILON)
-        {
-            return false;
-        }
-        float inv_det = 1.f / det;
-        Vec3 T = ray.Origin - P0;
-        float u = glm::dot(T, P) * inv_det;
-        if (u < 0.f || u > 1.f)
-        {
-            return false;
-        }
-        Vec3 Q = glm::cross(T, e1);
-        float v = glm::dot(ray.Direction, Q) * inv_det;
-        if (v < 0.f || u + v  > 1.f)
-        {
-            return false;
-        }
-        float t = glm::dot(e2, Q) * inv_det;
-        
-        if (t > EPSILON)
-        {
-            intersection = ray.Origin + t * ray.Direction;
-            return true;
-        }
-        
-        return false;
-    }
-    
-};
-
+#include "Source/BVH.h"
 
 int main() 
 {

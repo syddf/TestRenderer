@@ -17,3 +17,6 @@ typedef unsigned short UInt16;
 typedef int SInt32;
 typedef short SInt16;
 typedef char SInt8;
+
+#define EPSILON 0.0000001f
+#define MAXF 1e10f
