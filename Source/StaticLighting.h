@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Prefix.h"
+#include "AssetImporter/ImportSceneData.h"
 
 struct StaticLightingVertex
 {
@@ -49,4 +50,46 @@ struct StaticLightingVertex
 		Result.TexCoord1 = V0.TexCoord1 * inv;
 		return Result;
 	}
+};
+
+
+struct StaticLightingMesh
+{
+public:
+	using LightingMeshVertexVec = std::vector<StaticLightingVertex>;
+	using LightingMeshIndicesVec = std::vector<UInt32>;
+
+public:
+	void InitFromImportMesh(const ImportSceneData& SceneData, int MeshIndex)
+	{
+		UInt32 VertexStartIndex = 0;
+		UInt32 IndexStartIndex = 0;
+		for (int i = 0; i < MeshIndex - 1; i++)
+		{
+			VertexStartIndex += SceneData.MeshData.MeshVertexCount[i];
+			IndexStartIndex += SceneData.MeshData.MeshIndexCount[i];
+		}
+		UInt32 VertexCount = SceneData.MeshData.MeshVertexCount[MeshIndex];
+		UInt32 IndexCount = SceneData.MeshData.MeshIndexCount[MeshIndex];
+		Vertices.reserve(VertexCount);
+		Indices.reserve(IndexCount);
+		for (size_t vertIndex = VertexStartIndex; vertIndex < VertexStartIndex + VertexCount; vertIndex++)
+		{
+			StaticLightingVertex newVertex;
+			newVertex.Position = SceneData.MeshData.GetChannelData<ImportMeshData::Position>(vertIndex);
+			newVertex.Normal = SceneData.MeshData.GetChannelData<ImportMeshData::Normal>(vertIndex);
+			newVertex.TexCoord0 = SceneData.MeshData.GetChannelData<ImportMeshData::UV0>(vertIndex);
+			newVertex.TexCoord1 = SceneData.MeshData.GetChannelData<ImportMeshData::UV1>(vertIndex);
+			Vertices.push_back(newVertex);
+		}
+
+		for (size_t indIndex = IndexStartIndex; indIndex < IndexStartIndex + IndexCount; indIndex++)
+		{
+			Indices.push_back(SceneData.MeshData.IndicesVec[indIndex]);
+		}
+	}
+
+public:
+	LightingMeshVertexVec Vertices;
+	LightingMeshIndicesVec Indices;
 };

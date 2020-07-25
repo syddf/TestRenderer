@@ -11,7 +11,9 @@ public:
 		UpsampleFactor(InUpsampleFactor),
 		SizeX(InSizeX),
 		SizeY(InSizeY)
-	{}
+	{
+		Data.resize(SizeX * SizeY);
+	}
 
 protected:
 	int GetMinX() const { return 0; }
@@ -20,15 +22,19 @@ protected:
 	int GetMaxY() const { return SizeY - 1; }
 	void ProcessPixel(int X, int Y, const InterpolantType& Interpolant);
 
-private:
+protected:
 	const int UpsampleFactor;
 	const int SizeX;
 	const int SizeY;
+
+public:
+	std::vector<Vec3> Data;
 };
 
 void DistanceFieldRasterPolicy::ProcessPixel(int X, int Y, const InterpolantType& Interpolant)
 {
-
+	int index = Y * SizeX + X;
+	Data[index] = Interpolant.Normal;
 }
 
 template<class RasterPolicyType>
@@ -49,6 +55,13 @@ public:
 	{
 		InterpolantType Interpolants[3] = { v0, v1, v2 };
 		Vec2 Uvs[3] = { uv0, uv1, uv2 };
+		Uvs[0].x *= SizeX;
+		Uvs[1].x *= SizeX;
+		Uvs[2].x *= SizeX;
+		Uvs[0].y *= SizeY;
+		Uvs[1].y *= SizeY;
+		Uvs[2].y *= SizeY;
+
 		if (Uvs[0].y > Uvs[1].y)
 		{
 			std::swap(Uvs[0], Uvs[1]);

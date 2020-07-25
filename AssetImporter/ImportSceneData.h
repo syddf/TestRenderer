@@ -14,7 +14,7 @@ struct ImportMeshData
 	std::vector<UInt32> MeshVertexCount;
 	std::vector<UInt32> MeshIndexCount;
 
-	template<int channel> auto GetChannelData(int index);
+	template<int channel> auto GetChannelData(int index) const;
 
 	enum MeshDataChannel
 	{
@@ -44,28 +44,33 @@ struct ImportMeshData
 		totalIndices += Count;
 		IndicesVec.reserve(totalIndices);
 	}
+
+	size_t GetMeshCount() const
+	{
+		return MeshVertexCount.size();
+	}
 };
 
 template<>
-auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::Position>(int index)
+auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::Position>(int index) const 
 {
 	return PositionVec[index];
 }
 
 template<>
-auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::Normal>(int index)
+auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::Normal>(int index) const 
 {
 	return NormalVec[index];
 }
 
 template<>
-auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::UV0>(int index)
+auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::UV0>(int index) const
 {
 	return TexCoord0Vec[index];
 }
 
 template<>
-auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::UV1>(int index)
+auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::UV1>(int index) const
 {
 	return TexCoord1Vec[index];
 }
