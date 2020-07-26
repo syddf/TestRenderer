@@ -6,6 +6,7 @@
 #include <string>
 #include <fstream>
 
+typedef glm::vec4 Vec4;
 typedef glm::vec3 Vec3;
 typedef glm::vec3 Point;
 typedef glm::vec2 Vec2;

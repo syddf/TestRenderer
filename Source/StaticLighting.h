@@ -53,7 +53,6 @@ struct StaticLightingVertex
 	}
 };
 
-
 struct StaticLightingMesh
 {
 public:
@@ -108,4 +107,99 @@ public:
 public:
 	LightingMeshVertexVec Vertices;
 	LightingMeshIndicesVec Indices;
+};
+
+struct VisibilitySample
+{
+protected:
+	Vec4 PositionAndOccluderDistance;
+	Vec3 Normal;
+	UInt32 Visible : 1;
+	UInt32 IsMapped : 1;
+
+public:
+	VisibilitySample()
+	{
+		Visible = false;
+		IsMapped = false;
+	}
+
+	void SetPosition(const Vec3& Position)
+	{
+		PositionAndOccluderDistance.x = Position.x;
+		PositionAndOccluderDistance.y = Position.y;
+		PositionAndOccluderDistance.z = Position.z;
+	}
+	void SetOccluderDistance(float Distance)
+	{
+		PositionAndOccluderDistance.w = Distance;
+	}
+	void SetNormal(const Vec3& Norm)
+	{
+		Normal = Norm;
+	}
+	void SetVisible(bool bVisible)
+	{
+		Visible = bVisible;
+	}
+	void SetMapped(bool bMapped)
+	{
+		IsMapped = bMapped;
+	}
+
+	Vec3 GetPosition() const
+	{
+		return Vec3(PositionAndOccluderDistance.x, PositionAndOccluderDistance.y, PositionAndOccluderDistance.z);
+	}
+
+	float GetOccluderDistance() const
+	{
+		return PositionAndOccluderDistance.w;
+	}
+
+	Vec3 GetNormal() const
+	{
+		return Normal;
+	}
+
+	bool GetMapped() const
+	{
+		return IsMapped;
+	}
+
+	bool GetVisible() const
+	{
+		return Visible;
+	}
+};
+
+struct LowResolutionVisibilitySample : public VisibilitySample
+{
+	using HighResolutionSampleVec = std::vector<VisibilitySample>;
+	UInt32 NeedHighResolutionSamples : 1;
+	HighResolutionSampleVec HighResolutionSamples;
+
+	inline void SetNeedsHighResSampling(bool NeedHighResolution, int UpSampleFactor)
+	{
+		if (NeedHighResolution)
+		{
+			HighResolutionSamples.resize(UpSampleFactor * UpSampleFactor);
+		}
+	}
+};
+
+struct TexelVisibilityData2D
+{
+public:
+	TexelVisibilityData2D(UInt32 InSizeX, UInt32 InSizeY)
+		: SizeX(InSizeX), SizeY(InSizeY)
+	{
+		Data.resize(InSizeX * InSizeY);
+	}
+
+public:
+	UInt32 SizeX;
+	UInt32 SizeY;
+	using VisibilityVec = std::vector<LowResolutionVisibilitySample>;
+	VisibilityVec Data;
 };
