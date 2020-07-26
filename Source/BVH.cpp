@@ -153,7 +153,7 @@ int BVHTree::FlattenBVHTree(BVHNode * RootNode, int& Offset)
 	return CurOffset;
 }
 
-bool BVHTree::Intersect(const Ray & Ray, Point & Intersection)
+bool BVHTree::Intersect(const Ray & Ray, Intersection & Intersection)
 {
 	bool Hit = false;
 	Vec3 InvDir(1.0f / Ray.Direction.x, 1.0f / Ray.Direction.y, 1.0f / Ray.Direction.z);

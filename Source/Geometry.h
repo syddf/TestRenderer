@@ -1,6 +1,19 @@
 #pragma once
 #include "Prefix.h"
 
+struct Intersection
+{
+	Point Position;
+	Vec3 Normal;
+	float T;
+
+public:
+	Intersection()
+	{
+		T = MAXF;
+	}
+};
+
 struct Ray
 {
 public:
@@ -37,23 +50,30 @@ struct AABB
 
 	bool Intersect(const Ray& ray) const
 	{
-		float DxMin = Min.x - ray.Origin.x;
-		float DyMin = Min.y - ray.Origin.y;
-		float DzMin = Min.z - ray.Origin.z;
-		float DxMax = Max.x - ray.Origin.x;
-		float DyMax = Max.y - ray.Origin.y;
-		float DzMax = Max.z - ray.Origin.z;
-
-		float TxMin = DxMin / ray.Direction.x;
-		float TyMin = DyMin / ray.Direction.y;
-		float TzMin = DzMin / ray.Direction.z;
-		if (TxMin <= EPSILON || TyMin <= EPSILON || TzMin <= EPSILON)
-			return false;
-		float TxMax = DxMax / ray.Direction.x;
-		float TyMax = DyMax / ray.Direction.y;
-		float TzMax = DzMax / ray.Direction.z;
-
-		return TyMax > TxMin && TyMax > TzMin && TzMax > TxMin && TzMax > TyMin && TxMax > TyMin && TxMax > TzMin;
+		float TMin = 0.0f, TMax = MAXF;
+		for (int i = 0; i < 3; i++)
+		{
+			if (std::fabsf(ray.Direction[i]) < EPSILON)
+			{
+				if (ray.Origin[i] < Min[i] || ray.Origin[i] > Max[i])
+					return false;
+			}
+			else
+			{
+				const float InvD = 1.0f / ray.Direction[i];
+				float T1 = (Min[i] - ray.Origin[i]) * InvD;
+				float T2 = (Max[i] - ray.Origin[i]) * InvD;
+				if (T1 > T2)
+					std::swap(T1, T2);
+				if (T1 > TMin)
+					TMin = T1;
+				if (T2 < TMax)
+					TMax = T2;
+				if (TMin > TMax)
+					return false;
+			}
+		}
+		return true;
 	}
 
 	float SurfaceArea() const
@@ -72,6 +92,11 @@ struct AABB
 		return Diag.y > Diag.z ? 1 : 2;
 	}
 
+	Point GetCentroid() const
+	{
+		return 0.5f * (Min + Max);
+	}
+
 	Vec3 Offset(Point P) const
 	{
 		Vec3 Diag = Max - Min;
@@ -80,14 +105,23 @@ struct AABB
 	}
 };
 
+struct TriangleVertex
+{
+	Point Position;
+	Vec3 Normal;
+};
+
 struct Triangle
 {
-    Point P0;
-    Point P1;
-    Point P2;
+	TriangleVertex V0;
+	TriangleVertex V1;
+	TriangleVertex V2;
     
-    bool Intersect(Point& intersection, const Ray& ray)
+    bool Intersect(Intersection& intersection, const Ray& ray)
     {
+		Point P0 = V0.Position;
+		Point P1 = V1.Position;
+		Point P2 = V2.Position;
         Vec3 e1 = P1 - P0;
         Vec3 e2 = P2 - P0;
         
@@ -112,9 +146,11 @@ struct Triangle
         }
         float t = glm::dot(e2, Q) * inv_det;
         
-        if (t > EPSILON)
+        if (t > EPSILON && t < intersection.T)
         {
-            intersection = ray.Origin + t * ray.Direction;
+            intersection.Position = ray.Origin + t * ray.Direction;
+			intersection.Normal = u * V1.Normal + v * V2.Normal + (1.0f - u - v) * V0.Normal;
+			intersection.T = t;
             return true;
         }
         
@@ -124,18 +160,18 @@ struct Triangle
 	AABB GetAABB() const 
 	{
 		AABB NewAABB;
-		NewAABB.Min.x = std::min(std::min(P0.x, P1.x), P2.x);
-		NewAABB.Min.y = std::min(std::min(P0.y, P1.y), P2.y);
-		NewAABB.Min.z = std::min(std::min(P0.z, P1.z), P2.z);
-		NewAABB.Max.x = std::max(std::max(P0.x, P1.x), P2.x);
-		NewAABB.Max.y = std::max(std::max(P0.y, P1.y), P2.y);
-		NewAABB.Max.z = std::max(std::max(P0.z, P1.z), P2.z);
+		NewAABB.Min.x = std::min(std::min(V0.Position.x, V1.Position.x), V2.Position.x);
+		NewAABB.Min.y = std::min(std::min(V0.Position.y, V1.Position.y), V2.Position.y);
+		NewAABB.Min.z = std::min(std::min(V0.Position.z, V1.Position.z), V2.Position.z);
+		NewAABB.Max.x = std::max(std::max(V0.Position.x, V1.Position.x), V2.Position.x);
+		NewAABB.Max.y = std::max(std::max(V0.Position.y, V1.Position.y), V2.Position.y);
+		NewAABB.Max.z = std::max(std::max(V0.Position.z, V1.Position.z), V2.Position.z);
 		return NewAABB;
 	}
 
 	Point GetCentroid() const 
 	{
-		Point Center = P0 + P1 + P2;
+		Point Center = V0.Position + V1.Position + V2.Position;
 		return Center / 3.0f;
 	}
 };

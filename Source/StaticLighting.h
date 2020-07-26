@@ -95,9 +95,13 @@ public:
 		TriangleVec.resize(Indices.size() / 3);
 		for (int i = 0; i < TriangleVec.size(); i ++)
 		{
-			TriangleVec[i].P0 = Vertices[Indices[i * 3]].Position;
-			TriangleVec[i].P1 = Vertices[Indices[i * 3 + 1]].Position;
-			TriangleVec[i].P2 = Vertices[Indices[i * 3 + 2]].Position;
+			TriangleVec[i].V0.Position = Vertices[Indices[i * 3]].Position;
+			TriangleVec[i].V1.Position = Vertices[Indices[i * 3 + 1]].Position;
+			TriangleVec[i].V2.Position = Vertices[Indices[i * 3 + 2]].Position;
+			TriangleVec[i].V0.Normal = Vertices[Indices[i * 3]].Normal;
+			TriangleVec[i].V1.Normal = Vertices[Indices[i * 3 + 1]].Normal;
+			TriangleVec[i].V2.Normal = Vertices[Indices[i * 3 + 2]].Normal;
+
 		}
 	}
 

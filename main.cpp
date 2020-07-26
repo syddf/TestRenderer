@@ -68,6 +68,46 @@ int main()
 	BVHTree BVHTree;
 	BVHTree.BuildBVHTree(Triangles);
 
+	Point center = BVHTree.NodeVec[0].Bounding.GetCentroid();
+
+	float ScreenWorldWidth = 1200.0f;
+	float ScreenWorldHeight = 1200.0f;
+	float ScreenNearZ = 900.0f;
+	center.x = -2600;
+	center.y = 230;
+	center.z = 460;
+
+	std::vector<UInt8> Pixels;
+	Pixels.resize(HighResolutionSignalSizeY * HighResolutionSignalSizeX * 4, 128);
+
+	for (int i = -HighResolutionSignalSizeY / 2; i < HighResolutionSignalSizeY / 2; i++)
+	{
+		for (int j = -HighResolutionSignalSizeX / 2; j < HighResolutionSignalSizeX / 2; j++)
+		{
+			Ray tracingRay;
+			tracingRay.Origin = center;
+			float ScreenY = ((float)i) / HighResolutionSignalSizeY * ScreenWorldHeight;
+			float ScreenX = ((float)j) / HighResolutionSignalSizeX * ScreenWorldWidth;
+			float ScreenZ = ScreenNearZ;
+			Point ScreenPos(center.x + ScreenNearZ, center.y + ScreenX, center.z - ScreenY);
+			Intersection Intersection;
+			tracingRay.Direction = ScreenPos - tracingRay.Origin;
+			tracingRay.Direction = glm::normalize(tracingRay.Direction);
+			if (BVHTree.Intersect(tracingRay, Intersection))
+			{
+				float IndexY = i + HighResolutionSignalSizeY / 2;
+				float IndexX = j + HighResolutionSignalSizeX / 2;
+				float PixelsIndex = IndexY * HighResolutionSignalSizeX * 4 + IndexX * 4;
+				Pixels[PixelsIndex] = abs(Intersection.Normal.x) * 255;
+				Pixels[PixelsIndex + 1] = abs(Intersection.Normal.y) * 255;
+				Pixels[PixelsIndex + 2] = abs(Intersection.Normal.z) * 255;
+				Pixels[PixelsIndex + 3] = 255;
+			}
+		}
+	}
+	
+	OutputImageHelper::OutputPNG("tmp.png", Pixels, HighResolutionSignalSizeX, HighResolutionSignalSizeY);
+	/*
 	for (int i = 0; i < mesh.Indices.size();)
 	{
 		StaticLightingVertex v0 = mesh.Vertices[mesh.Indices[i]];
@@ -90,5 +130,6 @@ int main()
 		Pixels.push_back(255);
 	}
 	OutputImageHelper::OutputPNG("tmp.png", Pixels, HighResolutionSignalSizeX, HighResolutionSignalSizeY);
+	*/
     return 0;
 }

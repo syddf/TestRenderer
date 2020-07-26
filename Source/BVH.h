@@ -34,7 +34,7 @@ struct BVHTree
 	void BuildBVHTree(std::vector<Triangle>& TriangleVec);
 	BVHNode* SplitNode(std::vector<Triangle>& TriangleVec, int Begin, int End);
 	int FlattenBVHTree(BVHNode* RootNode, int& Offset);
-	bool Intersect(const Ray& ray, Point& Intersection);
+	bool Intersect(const Ray& ray, Intersection& Intersection);
 
 	int NodeCount;
 	TriangleVec Triangles;
