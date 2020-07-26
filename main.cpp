@@ -59,9 +59,6 @@ int main()
 	int HighResolutionSignalSizeX = 256 * 4;
 	int HighResolutionSignalSizeY = 256 * 4;
 
-	DistanceFieldRasterPolicy RasterPolicy(UpsampleFactor, HighResolutionSignalSizeX, HighResolutionSignalSizeY);
-	TriangleRasterizer<DistanceFieldRasterPolicy> DistanceFieldRasterizer(RasterPolicy);
-
 	StaticLightingMesh& mesh = LightingMeshVec[0];
 	std::vector<Triangle> Triangles;
 	mesh.GetTriangleVec(Triangles);
