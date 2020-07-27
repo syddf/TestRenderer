@@ -4,6 +4,8 @@
 #include "Geometry.h"
 #include "Rasterize.h"
 #include "StaticLightingData.h"
+#include "Light.h"
+#include "BVH.h"
 
 struct VisibilitySample
 {
@@ -225,6 +227,30 @@ public:
 	const int CornerIndex;
 };
 
+struct SignedDistanceFieldShadowSampleData
+{
+	float Distance;
+	float PenumbraSize;
+	bool IsMapped;
+};
+
+struct SignedDistanceFieldShadowMapData2D
+{
+	SignedDistanceFieldShadowMapData2D(UInt32 InSizeX, UInt32 InSizeY)
+		: SizeX(InSizeX), SizeY(InSizeY)
+	{
+		Data.resize(SizeX * SizeY);
+	}
+
+	SignedDistanceFieldShadowSampleData& operator()(UInt32 X, UInt32 Y) { return Data[SizeX * Y + X]; }
+
+	using SDFShadowDataVec = std::vector<SignedDistanceFieldShadowSampleData>;
+	SDFShadowDataVec Data;
+
+	UInt32 SizeX;
+	UInt32 SizeY;
+};
+
 
 class StaticLightingRasterPolicy
 {
@@ -303,7 +329,6 @@ protected:
 	const int SizeY;
 
 };
-
 
 struct StaticLightingSystem
 {
@@ -386,13 +411,30 @@ struct StaticLightingSystem
 		}
 	}
 
-	void RunStaticLighting(const std::vector<StaticLightingMesh>& Mesh, UInt32 Width, UInt32 Height)
+	void RunStaticLighting(std::vector<StaticLightingMesh>& Mesh, UInt32 Width, UInt32 Height, DirectionalLight DirectionLight)
 	{
+		auto InRange = [&](int X, int Y, int Width, int Height)-> bool
+		{
+			return X > 0 && X < Width && Y > 0 && Y < Height;
+		};
+
+		const int MaxTransitionDistanceWorldSpace = 50;
+
 		std::vector<TexelToVertexMap> TexelToVertexMapVec;
 		std::vector<TexelToCornersMap> TexelToCornersMapVec;
 		size_t MeshCount = Mesh.size();
 		TexelToVertexMapVec.reserve(MeshCount);
 		TexelToCornersMapVec.reserve(MeshCount);
+
+		std::vector<Triangle> BVHTriangles;
+		for (auto& StaticMesh : Mesh)
+		{
+			std::vector<Triangle> Triangles;
+			StaticMesh.GetTriangleVec(Triangles);
+			BVHTriangles.insert(BVHTriangles.end(), Triangles.begin(), Triangles.end());
+		}
+		BVHTree BVHTree;
+		BVHTree.BuildBVHTree(BVHTriangles);
 
 		for (size_t Index = 0; Index < MeshCount; Index++)
 		{
@@ -411,31 +453,31 @@ struct StaticLightingSystem
 			int UpSampleFactor = 1;
 			for (int VertIndex = 0; VertIndex < VertexVec.size(); )
 			{
-					StaticLightingVertex V0 = VertexVec[VertIndex];
-					StaticLightingVertex V1 = VertexVec[VertIndex + 1];
-					StaticLightingVertex V2 = VertexVec[VertIndex + 2];
-					Vec3 Normal = glm::cross((V2.Position - V0.Position), (V1.Position - V0.Position));
-					float TriangleArea = 0.5f * Normal.length();
+				StaticLightingVertex& V0 = VertexVec[VertIndex];
+				StaticLightingVertex& V1 = VertexVec[VertIndex + 1];
+				StaticLightingVertex& V2 = VertexVec[VertIndex + 2];
+				Vec3 Normal = glm::cross((V2.Position - V0.Position), (V1.Position - V0.Position));
+				float TriangleArea = 0.5f * Normal.length();
 
-					if (TriangleArea > EPSILON)
-					{
-						const Vec2 Vertex0 = VertexVec[VertIndex].TexCoord1 * Vec2(Width, Height);
-						const Vec2 Vertex1 = VertexVec[VertIndex + 1].TexCoord1* Vec2(Width, Height);
-						const Vec2 Vertex2 = VertexVec[VertIndex + 2].TexCoord1 * Vec2(Width, Height);
+				if (TriangleArea > EPSILON)
+				{
+					const Vec2 Vertex0 = VertexVec[VertIndex].TexCoord1 * Vec2(Width, Height);
+					const Vec2 Vertex1 = VertexVec[VertIndex + 1].TexCoord1* Vec2(Width, Height);
+					const Vec2 Vertex2 = VertexVec[VertIndex + 2].TexCoord1 * Vec2(Width, Height);
 
-						// Area in lightmap space, or the number of lightmap texels covered by this triangle
-						const float LightmapTriangleArea = std::abs(
-							Vertex0.x * (Vertex1.y - Vertex2.y)
-							+ Vertex1.x * (Vertex2.y - Vertex0.y)
-							+ Vertex2.x * (Vertex0.y - Vertex1.y));
+					// Area in lightmap space, or the number of lightmap texels covered by this triangle
+					const float LightmapTriangleArea = std::abs(
+						Vertex0.x * (Vertex1.y - Vertex2.y)
+						+ Vertex1.x * (Vertex2.y - Vertex0.y)
+						+ Vertex2.x * (Vertex0.y - Vertex1.y));
 
-						// Accumulate the texel density
-						AverageTexelDensity += LightmapTriangleArea / TriangleArea;
-					}
+					// Accumulate the texel density
+					AverageTexelDensity += LightmapTriangleArea / TriangleArea;
+				}
 
+				VertIndex += 3;
 			}
 
-			int UpsampleFactor = 1;
 			if (AverageTexelDensity > EPSILON)
 			{
 				AverageTexelDensity /= (VertexVec.size() / 3);
@@ -444,11 +486,359 @@ struct StaticLightingSystem
 				const float MaxTransitionDistanceWorldSpace = 50.0f;
 				int MinDistanceFieldUpsampleFactor = 5;
 				const int TargetUpsampleFactor = std::floor(ApproximateHighResTexelsPerMaxTransitionDistance / (RightTriangleSide * MaxTransitionDistanceWorldSpace));
-				UpsampleFactor = glm::clamp(TargetUpsampleFactor - TargetUpsampleFactor % 2 + 1, MinDistanceFieldUpsampleFactor, 13);
+				UpSampleFactor = glm::clamp(TargetUpsampleFactor - TargetUpsampleFactor % 2 + 1, MinDistanceFieldUpsampleFactor, 13);
 			}
 
 			// Phase 1 : Low Resolution Visibility
+			TexelVisibilityData2D Visibility2D(Width, Height);
+			for (int Y = 0; Y < Height; Y++)
+			{
+				for (int X = 0; X < Width; X++)
+				{
+					TexelToVertex& TexelToVertex = TexelToVertexMap(X, Y);
+					if (TexelToVertex.TotalSampleWeight > 0)
+					{
+						LowResolutionVisibilitySample& CurrentSample = Visibility2D(X, Y);
+						CurrentSample.SetPosition(TexelToVertex.Position);
+						CurrentSample.SetNormal(TexelToVertex.Normal);
+						CurrentSample.SetMapped(true);
 
+						const Vec3 LightPosition = DirectionLight.Position;
+						const Vec3 LightVec = DirectionLight.Direction;
+						Ray LightRay;
+						LightRay.Origin = TexelToVertex.Position;
+						LightRay.Direction = glm::normalize(LightPosition - LightRay.Origin);
+						Intersection Intersection;
+						if (BVHTree.Intersect(LightRay, Intersection))
+						{
+							CurrentSample.SetVisible(true);
+						}
+					}
+				}
+			}
+
+			// Phase 2 : Detecting Additional Sampling Required¡¢Rasterize High Resolution Samples
+			int HighResolutionX = Width * UpSampleFactor;
+			int HighResolutionY = Height * UpSampleFactor;
+
+			SignedDistanceFieldShadowMapData2D* ShadowMapData = new SignedDistanceFieldShadowMapData2D(Width, Height);
+			const int Neighbors[4][2] = 
+			{
+				{0, 1},
+				{0, -1},
+				{1, 0},
+				{-1, 0}
+			};
+
+			const int Corners[4][2] = 
+			{
+				{0, 0},
+			    {0, UpSampleFactor - 1},
+				{UpSampleFactor - 1, 0},
+				{UpSampleFactor - 1, UpSampleFactor - 1}
+			};
+
+			for (int Y = 0; Y < Height; Y++)
+			{
+				for (int X = 0; X < Width; X++)
+				{
+					LowResolutionVisibilitySample& CurrentSample = Visibility2D(X, Y);
+					if (CurrentSample.GetMapped())
+					{
+						SignedDistanceFieldShadowSampleData& FinalShadowSample = (*ShadowMapData)(X, Y);
+						FinalShadowSample.IsMapped = true;
+						if (CurrentSample.GetVisible())
+						{
+							FinalShadowSample.Distance = 1.0f;
+							FinalShadowSample.PenumbraSize = 1.0f;
+						}
+						bool NeighborDifferent = false;
+						for (int i = 0; i < 4; i++)
+						{
+							int NewX = X + Neighbors[i][0];
+							int NewY = Y + Neighbors[i][1];
+							if (InRange(NewX, NewY, Width, Height))
+							{
+								const LowResolutionVisibilitySample& NeighborSample = Visibility2D(NewX, NewY);
+								if (CurrentSample.GetVisible() != NeighborSample.GetVisible() && NeighborSample.GetMapped())
+								{
+									NeighborDifferent = true;
+									break;
+								}
+							}
+						}
+
+						if (NeighborDifferent)
+						{
+							CurrentSample.SetNeedsHighResSampling(true, UpSampleFactor);
+						}
+					}
+				}
+			}
+
+			DistanceFieldRasterPolicy RasterPolicy(Visibility2D, UpSampleFactor, HighResolutionX, HighResolutionY);
+			TriangleRasterizer<DistanceFieldRasterPolicy> DistanceFieldRasterizer(RasterPolicy);
+			for (int VertIndex = 0; VertIndex < VertexVec.size();)
+			{
+				StaticLightingVertex& V0 = VertexVec[VertIndex];
+				StaticLightingVertex& V1 = VertexVec[VertIndex + 1];
+				StaticLightingVertex& V2 = VertexVec[VertIndex + 2];
+
+				DistanceFieldRasterizer.DrawTriangle(
+					V0,
+					V1,
+					V2,
+					V0.TexCoord1 * Vec2(HighResolutionX, HighResolutionY) + Vec2(-0.5f, -0.5f),
+					V1.TexCoord1 * Vec2(HighResolutionX, HighResolutionY) + Vec2(-0.5f, -0.5f),
+					V2.TexCoord1* Vec2(HighResolutionX, HighResolutionY) + Vec2(-0.5f, -0.5f)
+				);
+			}
+
+			// Edge Case : Low Resolution Sample Is Mapped , No High Resolution Sample Is Mapped
+			for (int Y = 0; Y < Height; Y++)
+			{
+				for (int X = 0; X < Width; X++)
+				{
+					LowResolutionVisibilitySample& CurrentSample = Visibility2D(X, Y);
+					if (CurrentSample.GetMapped() && CurrentSample.NeedHighResolutionSamples)
+					{
+						bool HasHighResSampleMapped = false;
+						for (int HighResY = 0; HighResY < UpSampleFactor; HighResY++)
+						{
+							for (int HighResX = 0; HighResX < UpSampleFactor; HighResX++)
+							{
+								VisibilitySample& CurrentHighResSample = CurrentSample.HighResolutionSamples[HighResY * UpSampleFactor + HighResX];
+								if (CurrentHighResSample.GetMapped())
+								{
+									HasHighResSampleMapped = true;
+								}
+							}
+						}
+
+						if (!HasHighResSampleMapped)
+						{
+							const TexelToCorners& TexelToCorners = TexelToCornersMap(X, Y);
+							for (int CornerIndex = 0; CornerIndex < 4; CornerIndex++)
+							{
+								if (TexelToCorners.Valid[CornerIndex])
+								{
+									VisibilitySample& CornerHighResSample = CurrentSample.HighResolutionSamples[Corners[CornerIndex][1] * UpSampleFactor + Corners[CornerIndex][0]];
+									CornerHighResSample.SetMapped(true);
+									CornerHighResSample.SetPosition(TexelToCorners.Position[CornerIndex]);
+								}
+							}
+						}
+					}
+				}
+			}
+
+			for (int Y = 0; Y < Height; Y++)
+			{
+				for (int X = 0; X < Width; X++)
+				{
+					LowResolutionVisibilitySample& CurrentSample = Visibility2D(X, Y);
+					if (CurrentSample.GetMapped() && CurrentSample.NeedHighResolutionSamples)
+					{
+						for (int HighResY = 0; HighResY < UpSampleFactor; HighResY++)
+						{
+							for (int HighResX = 0; HighResX < UpSampleFactor; HighResX++)
+							{
+								VisibilitySample& HighResSample = CurrentSample.HighResolutionSamples[HighResY * UpSampleFactor + HighResX];
+								if (true) // Test
+								{
+									Vec3 Position = DirectionLight.Position;
+									Vec3 Direction = glm::normalize(DirectionLight.Position - HighResSample.GetPosition());
+									Ray ray;
+									ray.Origin = Position;
+									ray.Direction = Direction;
+
+									Intersection Inter;
+									if (BVHTree.Intersect(ray, Inter))
+									{
+										HighResSample.SetOccluderDistance(Inter.T);
+									}
+									else
+									{
+										HighResSample.SetVisible(true);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+
+
+			// Phase 3 : Traverse High Resolution To Get Shadow Transition And Scatter To Other Samples.
+			for (int LowResY = 0; LowResY < Height; LowResY++)
+			{
+				for (int LowResX = 0; LowResX < Width; LowResX++)
+				{
+					LowResolutionVisibilitySample& CurrentLowResSample = Visibility2D(LowResX, LowResY);
+					if (CurrentLowResSample.GetMapped() && CurrentLowResSample.NeedHighResolutionSamples)
+					{
+						for (int HighResY = 0; HighResY < UpSampleFactor; HighResY++)
+						{
+							for (int HighResX = 0; HighResX < UpSampleFactor; HighResX++)
+							{
+								VisibilitySample& HighResSample = CurrentLowResSample.HighResolutionSamples[HighResY * UpSampleFactor + HighResX];
+								if (HighResSample.GetMapped() && !HighResSample.GetVisible())
+								{
+									bool NeighborDifferent = false;
+									for (int i = 0; i < 4; i++)
+									{
+										int HighResNewX = LowResX * UpSampleFactor + HighResX + Neighbors[i][0];
+										int HighResNewY = LowResY * UpSampleFactor + HighResY + Neighbors[i][1];
+										int LowResNewX = HighResNewX / UpSampleFactor;
+										int LowResNewY = HighResNewY / UpSampleFactor;
+										if (InRange(LowResNewX, LowResNewY, Width, Height))
+										{
+											const LowResolutionVisibilitySample& LowResNeighborSample = Visibility2D(LowResNewX, LowResNewY);
+											if (LowResNeighborSample.NeedHighResolutionSamples)
+											{
+												const VisibilitySample& HighResNeighborSample = 
+													LowResNeighborSample.HighResolutionSamples[(HighResNewY) % UpSampleFactor * UpSampleFactor + HighResNewX % UpSampleFactor];
+												if (HighResNeighborSample.GetMapped() && HighResNeighborSample.GetVisible())
+												{
+													NeighborDifferent = true;
+													break;
+												}
+											}
+											else
+											{
+												if (LowResNeighborSample.GetMapped() && LowResNeighborSample.GetVisible())
+												{
+													NeighborDifferent = true;
+													break;
+												}
+											}
+										}
+									}
+
+									if (NeighborDifferent)
+									{
+										float WorldSpacePerHighResTexelX = MAXF;
+										float WorldSpacePerHighResTexelY = MAXF;
+
+										for (int NeighborIndex = 0; NeighborIndex < 4; NeighborIndex++)
+										{
+											int NewHighResX = HighResX + Neighbors[NeighborIndex][0];
+											int NewHighResY = HighResY + Neighbors[NeighborIndex][1];
+											if (InRange(NewHighResX, NewHighResY, UpSampleFactor, UpSampleFactor))
+											{
+												const VisibilitySample& NeighborSample = 
+													CurrentLowResSample.HighResolutionSamples[NewHighResY * UpSampleFactor + NewHighResX];
+												float Length = (NeighborSample.GetPosition() - HighResSample.GetPosition()).length();
+												if (NeighborIndex >= 2)
+												{
+													WorldSpacePerHighResTexelX = std::min(WorldSpacePerHighResTexelX, Length);
+												}
+												else
+												{
+													WorldSpacePerHighResTexelY = std::min(WorldSpacePerHighResTexelY, Length);
+												}
+											}
+										}
+
+										if (WorldSpacePerHighResTexelX == MAXF && WorldSpacePerHighResTexelY == MAXF)
+										{
+											WorldSpacePerHighResTexelX = 1.0f;
+											WorldSpacePerHighResTexelY = 1.0f;
+										}
+										else if (WorldSpacePerHighResTexelX == MAXF)
+										{
+											WorldSpacePerHighResTexelX = WorldSpacePerHighResTexelY;
+										}
+										else if (WorldSpacePerHighResTexelY == MAXF) 
+										{
+											WorldSpacePerHighResTexelY = WorldSpacePerHighResTexelX;
+										}
+
+										int LowResScatterTexelsCountX = (int)std::floor(MaxTransitionDistanceWorldSpace / (WorldSpacePerHighResTexelX * UpSampleFactor)) + 1;
+										LowResScatterTexelsCountX = std::min(LowResScatterTexelsCountX, 100);
+										int LowResScatterTexelsCountY = (int)std::floor(MaxTransitionDistanceWorldSpace / (WorldSpacePerHighResTexelY * UpSampleFactor)) + 1;
+										LowResScatterTexelsCountY = std::min(LowResScatterTexelsCountY, 100);
+
+
+										for (int ScatterOffsetY = -LowResScatterTexelsCountY; ScatterOffsetY <= LowResScatterTexelsCountY; ScatterOffsetY++)
+										{
+											const int LowResScatterY = ScatterOffsetY + LowResY;
+											if (LowResScatterY < 0 || LowResScatterY >= Height)
+												continue;
+											for (int ScatterOffsetX = -LowResScatterTexelsCountX; ScatterOffsetX <= LowResScatterTexelsCountX; ScatterOffsetX++)
+											{
+												const int LowResScatterX = ScatterOffsetX + LowResX;
+												if (LowResScatterX < 0 || LowResScatterX >= Width)
+												{
+													continue;
+												}
+
+												const LowResolutionVisibilitySample& LowResScatterSample = Visibility2D(LowResScatterX, LowResScatterY);
+												if (LowResScatterSample.GetMapped())
+												{
+													bool CurrentRegion = false;
+													Vec3 ScatterPosition;
+													Vec3 ScatterNormal;
+													bool FoundScatterPosition = false;
+
+													if (LowResScatterSample.NeedHighResolutionSamples)
+													{
+														int CenterSampleIndex = (UpSampleFactor / 2) * UpSampleFactor + UpSampleFactor / 2;
+														const VisibilitySample& HighResScatterSample = LowResScatterSample.HighResolutionSamples[CenterSampleIndex];
+														if (HighResScatterSample.GetMapped())
+														{
+															CurrentRegion = HighResScatterSample.GetVisible();
+															ScatterPosition = HighResScatterSample.GetPosition();
+															ScatterNormal = HighResScatterSample.GetNormal();
+															FoundScatterPosition = true;
+														}
+														else
+														{
+															float ClosestMappedSubSampleDist = MAXF;
+															for (int SubY = 0; SubY < UpSampleFactor; SubY++)
+															{
+																for (int SubX = 0; SubX < UpSampleFactor; SubX++)
+																{
+																	const VisibilitySample& SubHighResSample = LowResScatterSample.HighResolutionSamples[SubY * UpSampleFactor + SubX];
+																	const float SubSampleDistanceSquared =
+																		(SubX - UpSampleFactor / 2) * (SubX - UpSampleFactor / 2) + (SubY - UpSampleFactor / 2) * (SubY - UpSampleFactor / 2);
+																	if (SubHighResSample.GetMapped() && SubSampleDistanceSquared < ClosestMappedSubSampleDist)
+																	{
+																		ClosestMappedSubSampleDist = SubSampleDistanceSquared;
+																		CurrentRegion = SubHighResSample.GetVisible();
+																		ScatterPosition = SubHighResSample.GetPosition();
+																		ScatterNormal = SubHighResSample.GetNormal();
+																		FoundScatterPosition = true;
+																	}
+																}
+															}
+														}
+													}
+
+													if (!FoundScatterPosition)
+													{
+														CurrentRegion = LowResScatterSample.GetVisible();
+														ScatterPosition = LowResScatterSample.GetPosition();
+														ScatterNormal = LowResScatterSample.GetNormal();
+													}
+													
+													const float TransitionDistance = (ScatterPosition - HighResSample.GetPosition()).length();
+													const float NormalizedDistance = glm::clamp(TransitionDistance / MaxTransitionDistanceWorldSpace, 0.0f , 1.0f);
+													SignedDistanceFieldShadowSampleData& FinalShadowSample = (*ShadowMapData)(LowResScatterX, LowResScatterY);
+													if (NormalizedDistance * 0.5f < std::abs(FinalShadowSample.Distance - 0.5f))
+													{
+														FinalShadowSample.Distance = CurrentRegion ? NormalizedDistance * 0.5f + 0.5f : -0.5f * NormalizedDistance + 0.5f;
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 };

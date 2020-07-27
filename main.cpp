@@ -11,38 +11,6 @@
 
 int main() 
 {
-	/*
-    glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Vulkan window", nullptr, nullptr);
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    std::cout << extensionCount << " extensions supported\n";
-    
-    glm::mat4 matrix;
-    glm::vec4 vec;
-    auto test = matrix * vec;
-
-	int UpsampleFactor = 4;
-	int HighResolutionSignalSizeX = 256 * 4;
-	int HighResolutionSignalSizeY = 256 * 4;
-
-	DistanceFieldRasterPolicy RasterPolicy(UpsampleFactor, HighResolutionSignalSizeX, HighResolutionSignalSizeY);
-	TriangleRasterizer<DistanceFieldRasterPolicy> DistanceFieldRasterizer(RasterPolicy);
-	StaticLightingVertex v0;
-	StaticLightingVertex v1;
-	StaticLightingVertex v2;
-	Vec2 uv0;
-	Vec2 uv1;
-	Vec2 uv2;
-	DistanceFieldRasterizer.DrawTriangle(v0, v1, v2, uv0, uv1, uv2);
-    while(!glfwWindowShouldClose(window)) 
-	{
-        glfwPollEvents();
-    } 
-    glfwDestroyWindow(window);
-    glfwTerminate();    
-	*/
 	std::string path = "./../Asset/Dst/Cornell.data";
 	ImportAsset* scene= new ImportSceneData();
 	scene->Deserialize(path);
