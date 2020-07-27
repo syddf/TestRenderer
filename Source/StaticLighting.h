@@ -6,6 +6,7 @@
 #include "StaticLightingData.h"
 #include "Light.h"
 #include "BVH.h"
+#include "OutputImageHelper.h"
 
 struct VisibilitySample
 {
@@ -79,10 +80,24 @@ struct LowResolutionVisibilitySample : public VisibilitySample
 
 	inline void SetNeedsHighResSampling(bool NeedHighResolution, int UpSampleFactor)
 	{
+		NeedHighResolutionSamples = NeedHighResolution;
 		if (NeedHighResolution)
 		{
 			HighResolutionSamples.resize(UpSampleFactor * UpSampleFactor);
 		}
+	}
+
+	int GetHighResMappedCount()
+	{
+		int res = 0;
+		for (int i = 0; i < HighResolutionSamples.size(); i++)
+		{
+			if (HighResolutionSamples[i].GetMapped())
+			{
+				res++;
+			}
+		}
+		return res;
 	}
 };
 
@@ -106,6 +121,20 @@ public:
 		UInt32 Index = Y * SizeX + X;
 		return Data[Index];
 	}
+
+	void Output()
+	{
+		std::vector<UInt8> Pixels;
+		Pixels.reserve(SizeX * SizeY * 4);
+		for (int i = 0; i < Data.size(); i++)
+		{
+			Pixels.push_back(Data[i].GetHighResMappedCount() * 10);
+			Pixels.push_back(Data[i].GetHighResMappedCount() * 10);
+			Pixels.push_back(255);
+			Pixels.push_back(255);
+		}
+		OutputImageHelper::OutputPNG("tmp.png", Pixels, SizeX, SizeY);
+	}
 };
 
 struct TexelToVertex
@@ -114,8 +143,8 @@ struct TexelToVertex
 	Vec3 Normal;
 	Vec2 TexCoord0;
 	Vec2 TexCoord1;
-	float TotalSampleWeight;
-	float MaxSampleWeight;
+	float TotalSampleWeight = 0.0f;
+	float MaxSampleWeight = 0.0f;
 
 	StaticLightingVertex GetVertex() const 
 	{
@@ -158,12 +187,26 @@ struct TexelToVertexMap
 	UInt32 SizeX;
 	UInt32 SizeY;
 	TexelVec Data;
+
+	void Output()
+	{
+		std::vector<UInt8> Pixels;
+		Pixels.reserve(SizeX * SizeY * 4);
+		for (int i = 0; i < Data.size(); i++)
+		{
+			Pixels.push_back(Data[i].Normal.x * 255);
+			Pixels.push_back(Data[i].Normal.y * 255);
+			Pixels.push_back(Data[i].Normal.z * 255);
+			Pixels.push_back(255);
+		}
+		OutputImageHelper::OutputPNG("tmp.png", Pixels, SizeX, SizeY);
+	}
 };
 
 struct TexelToCorners
 {
 	Vec3 Position[4];
-	bool Valid[4];
+	bool Valid[4] = { false, false, false, false };
 };
 
 struct TexelToCornersMap
@@ -229,9 +272,9 @@ public:
 
 struct SignedDistanceFieldShadowSampleData
 {
-	float Distance;
-	float PenumbraSize;
-	bool IsMapped;
+	float Distance = 0.0f;
+	float PenumbraSize = 0.0f;
+	bool IsMapped = true;
 };
 
 struct SignedDistanceFieldShadowMapData2D
@@ -249,8 +292,21 @@ struct SignedDistanceFieldShadowMapData2D
 
 	UInt32 SizeX;
 	UInt32 SizeY;
-};
 
+	void Output()
+	{
+		std::vector<UInt8> Pixels;
+		Pixels.reserve(SizeX * SizeY * 4);
+		for (int i = 0; i < Data.size(); i++)
+		{
+			Pixels.push_back(Data[i].Distance * 255);
+			Pixels.push_back(Data[i].Distance * 255);
+			Pixels.push_back(Data[i].Distance * 255);
+			Pixels.push_back(255);
+		}
+		OutputImageHelper::OutputPNG("tmp.png", Pixels, SizeX, SizeY);
+	}
+};
 
 class StaticLightingRasterPolicy
 {
@@ -373,7 +429,7 @@ struct StaticLightingSystem
 			StaticLightingVertex V1 = VertexVec[Index + 1];
 			StaticLightingVertex V2 = VertexVec[Index + 2];
 			Vec3 TriangleNormal = glm::cross(V2.Position - V0.Position, V1.Position - V0.Position);
-			if (TriangleNormal.length() > EPSILON)
+			if (glm::length(TriangleNormal) > EPSILON)
 			{
 				const Vec2 UV0 = V0.TexCoord1 * Vec2(TexelToVertexMap.SizeX, TexelToVertexMap.SizeY);
 				const Vec2 UV1 = V1.TexCoord1 * Vec2(TexelToVertexMap.SizeX, TexelToVertexMap.SizeY);
@@ -388,7 +444,7 @@ struct StaticLightingSystem
 					for (int X = 1; X < NumSamplesX - 1; X++)
 					{
 						const float SampleXOffset = -X / (float)(NumSamplesX - 1);
-						const float SampleWeight = (1.0f - std::abs(1 + SampleXOffset * 2)) * (1.0f - std::abs(1 + SampleYOffset * 2));\
+						const float SampleWeight = (1.0f - std::abs(1 + SampleXOffset * 2)) * (1.0f - std::abs(1 + SampleYOffset * 2));
 
 						TriangleRasterizer<StaticLightingRasterPolicy> TexelMappingRasterizer(StaticLightingRasterPolicy(
 								TexelToVertexMap,
@@ -408,6 +464,8 @@ struct StaticLightingSystem
 				}
 				
 			}
+
+			Index += 3;
 		}
 	}
 
@@ -436,6 +494,9 @@ struct StaticLightingSystem
 		BVHTree BVHTree;
 		BVHTree.BuildBVHTree(BVHTriangles);
 
+		TexelToVertexMapVec.resize(MeshCount);
+		TexelToCornersMapVec.resize(MeshCount);
+
 		for (size_t Index = 0; Index < MeshCount; Index++)
 		{
 			// Pre : Get Map / UpSampleFactor
@@ -444,11 +505,12 @@ struct StaticLightingSystem
 			TexelToVertexMap.Resize(Width, Height);
 			TexelToCornersMap& TexelToCornersMap = TexelToCornersMapVec[Index];
 			TexelToCornersMap.Resize(Width, Height);
+
 			std::vector<StaticLightingVertex> VertexVec;
 			CurMesh.GetStaticLightingVertexVec(VertexVec);
 
 			SetupTextureMapping(VertexVec, TexelToVertexMap, TexelToCornersMap);
-
+			TexelToVertexMap.Output();
 			float AverageTexelDensity = 0.0f;
 			int UpSampleFactor = 1;
 			for (int VertIndex = 0; VertIndex < VertexVec.size(); )
@@ -457,7 +519,7 @@ struct StaticLightingSystem
 				StaticLightingVertex& V1 = VertexVec[VertIndex + 1];
 				StaticLightingVertex& V2 = VertexVec[VertIndex + 2];
 				Vec3 Normal = glm::cross((V2.Position - V0.Position), (V1.Position - V0.Position));
-				float TriangleArea = 0.5f * Normal.length();
+				float TriangleArea = 0.5f * glm::length(Normal);
 
 				if (TriangleArea > EPSILON)
 				{
@@ -491,6 +553,8 @@ struct StaticLightingSystem
 
 			// Phase 1 : Low Resolution Visibility
 			TexelVisibilityData2D Visibility2D(Width, Height);
+
+			int VisibleCount = 0;
 			for (int Y = 0; Y < Height; Y++)
 			{
 				for (int X = 0; X < Width; X++)
@@ -504,14 +568,15 @@ struct StaticLightingSystem
 						CurrentSample.SetMapped(true);
 
 						const Vec3 LightPosition = DirectionLight.Position;
-						const Vec3 LightVec = DirectionLight.Direction;
+						const Vec3 LightVec = glm::normalize(DirectionLight.Position - TexelToVertex.Position);
 						Ray LightRay;
-						LightRay.Origin = TexelToVertex.Position;
+						LightRay.Origin = TexelToVertex.Position - 3.0f * glm::normalize(Vec3(TexelToVertex.Normal.x, TexelToVertex.Normal.y, TexelToVertex.Normal.z));
 						LightRay.Direction = glm::normalize(LightPosition - LightRay.Origin);
 						Intersection Intersection;
-						if (BVHTree.Intersect(LightRay, Intersection))
+						if (!BVHTree.Intersect(LightRay, Intersection))
 						{
 							CurrentSample.SetVisible(true);
+							VisibleCount++;
 						}
 					}
 				}
@@ -592,7 +657,11 @@ struct StaticLightingSystem
 					V1.TexCoord1 * Vec2(HighResolutionX, HighResolutionY) + Vec2(-0.5f, -0.5f),
 					V2.TexCoord1* Vec2(HighResolutionX, HighResolutionY) + Vec2(-0.5f, -0.5f)
 				);
+
+				VertIndex += 3;
 			}
+			Visibility2D.Output();
+
 
 			// Edge Case : Low Resolution Sample Is Mapped , No High Resolution Sample Is Mapped
 			for (int Y = 0; Y < Height; Y++)
@@ -644,13 +713,14 @@ struct StaticLightingSystem
 							for (int HighResX = 0; HighResX < UpSampleFactor; HighResX++)
 							{
 								VisibilitySample& HighResSample = CurrentSample.HighResolutionSamples[HighResY * UpSampleFactor + HighResX];
-								if (true) // Test
+								//if (HighResSample.GetMapped()) // Test
 								{
-									Vec3 Position = DirectionLight.Position;
+									Vec3 Position = HighResSample.GetPosition();
 									Vec3 Direction = glm::normalize(DirectionLight.Position - HighResSample.GetPosition());
 									Ray ray;
-									ray.Origin = Position;
-									ray.Direction = Direction;
+									Vec3 Normal = Vec3(HighResSample.GetNormal().x, HighResSample.GetNormal().y, HighResSample.GetNormal().z);
+									ray.Origin = Position - 3.0f * glm::normalize(Normal);
+									ray.Direction = glm::normalize(DirectionLight.Position - ray.Origin);
 
 									Intersection Inter;
 									if (BVHTree.Intersect(ray, Inter))
@@ -728,7 +798,7 @@ struct StaticLightingSystem
 											{
 												const VisibilitySample& NeighborSample = 
 													CurrentLowResSample.HighResolutionSamples[NewHighResY * UpSampleFactor + NewHighResX];
-												float Length = (NeighborSample.GetPosition() - HighResSample.GetPosition()).length();
+												float Length = glm::length((NeighborSample.GetPosition() - HighResSample.GetPosition()));
 												if (NeighborIndex >= 2)
 												{
 													WorldSpacePerHighResTexelX = std::min(WorldSpacePerHighResTexelX, Length);
@@ -758,7 +828,6 @@ struct StaticLightingSystem
 										LowResScatterTexelsCountX = std::min(LowResScatterTexelsCountX, 100);
 										int LowResScatterTexelsCountY = (int)std::floor(MaxTransitionDistanceWorldSpace / (WorldSpacePerHighResTexelY * UpSampleFactor)) + 1;
 										LowResScatterTexelsCountY = std::min(LowResScatterTexelsCountY, 100);
-
 
 										for (int ScatterOffsetY = -LowResScatterTexelsCountY; ScatterOffsetY <= LowResScatterTexelsCountY; ScatterOffsetY++)
 										{
@@ -822,8 +891,8 @@ struct StaticLightingSystem
 														ScatterNormal = LowResScatterSample.GetNormal();
 													}
 													
-													const float TransitionDistance = (ScatterPosition - HighResSample.GetPosition()).length();
-													const float NormalizedDistance = glm::clamp(TransitionDistance / MaxTransitionDistanceWorldSpace, 0.0f , 1.0f);
+													const float TransitionDistance = glm::length(ScatterPosition - HighResSample.GetPosition());
+													const float NormalizedDistance = glm::clamp(TransitionDistance / 50, 0.0f , 1.0f);
 													SignedDistanceFieldShadowSampleData& FinalShadowSample = (*ShadowMapData)(LowResScatterX, LowResScatterY);
 													if (NormalizedDistance * 0.5f < std::abs(FinalShadowSample.Distance - 0.5f))
 													{
@@ -839,6 +908,9 @@ struct StaticLightingSystem
 					}
 				}
 			}
+
+			ShadowMapData->Output();
 		}
 	}
+
 };

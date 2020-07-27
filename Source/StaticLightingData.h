@@ -63,7 +63,7 @@ public:
 	{
 		UInt32 VertexStartIndex = 0;
 		UInt32 IndexStartIndex = 0;
-		for (int i = 0; i < MeshIndex - 1; i++)
+		for (int i = 0; i < MeshIndex; i++)
 		{
 			VertexStartIndex += SceneData.MeshData.MeshVertexCount[i];
 			IndexStartIndex += SceneData.MeshData.MeshIndexCount[i];

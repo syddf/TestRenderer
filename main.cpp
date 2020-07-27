@@ -8,12 +8,26 @@
 #include "Source/StaticLighting.h"
 #include "Source/OutputImageHelper.h"
 #include "Source/BVH.h"
+#include "Source/StaticLighting.h"
 
 int main() 
 {
 	std::string path = "./../Asset/Dst/Cornell.data";
 	ImportAsset* scene= new ImportSceneData();
 	scene->Deserialize(path);
+	size_t MeshCount = static_cast<ImportSceneData*>(scene)->MeshData.GetMeshCount();
+	std::vector<StaticLightingMesh> LightingMeshVec(MeshCount);
+	for (size_t i = 0; i < MeshCount; i++)
+	{
+		LightingMeshVec[i].InitFromImportMesh(*static_cast<ImportSceneData*>(scene), i);
+	}
+	StaticLightingSystem StaticLighting;
+	DirectionalLight Light;
+	Light.Position = Vec3(-6480025.50, 5497625.50, 5271184.50);
+	Light.Direction = Vec3(1.0f, 0.0f, 0.0f);
+	StaticLighting.RunStaticLighting(LightingMeshVec, 256, 256, Light);
+
+	/*
 
 	size_t MeshCount = static_cast<ImportSceneData*>(scene)->MeshData.GetMeshCount();
 	std::vector<StaticLightingMesh> LightingMeshVec(MeshCount);
@@ -96,5 +110,6 @@ int main()
 	}
 	OutputImageHelper::OutputPNG("tmp.png", Pixels, HighResolutionSignalSizeX, HighResolutionSignalSizeY);
 	*/
+
     return 0;
 }
