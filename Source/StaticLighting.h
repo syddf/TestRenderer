@@ -299,9 +299,10 @@ struct SignedDistanceFieldShadowMapData2D
 		Pixels.reserve(SizeX * SizeY * 4);
 		for (int i = 0; i < Data.size(); i++)
 		{
-			Pixels.push_back(Data[i].Distance * 255);
-			Pixels.push_back(Data[i].Distance * 255);
-			Pixels.push_back(Data[i].Distance * 255);
+			int val = Data[i].Distance * 255;
+			Pixels.push_back(glm::clamp(val, 0, 255));
+			Pixels.push_back(glm::clamp(val, 0, 255));
+			Pixels.push_back(glm::clamp(val, 0, 255));
 			Pixels.push_back(255);
 		}
 		OutputImageHelper::OutputPNG("tmp.png", Pixels, SizeX, SizeY);
@@ -340,7 +341,7 @@ protected:
 			TexelToVertex.Position = Interpolant.Position;
 			TexelToVertex.TexCoord0 = Interpolant.TexCoord0;
 			TexelToVertex.TexCoord1 = Interpolant.TexCoord1;
-			TexelToVertex.Normal += TriangleNormal * SampleWeight;
+			TexelToVertex.Normal = glm::normalize(Interpolant.Normal);
 			TexelToVertex.TotalSampleWeight += SampleWeight;
 		}
 	}
@@ -553,7 +554,6 @@ struct StaticLightingSystem
 
 			// Phase 1 : Low Resolution Visibility
 			TexelVisibilityData2D Visibility2D(Width, Height);
-
 			int VisibleCount = 0;
 			for (int Y = 0; Y < Height; Y++)
 			{
@@ -570,7 +570,7 @@ struct StaticLightingSystem
 						const Vec3 LightPosition = DirectionLight.Position;
 						const Vec3 LightVec = glm::normalize(DirectionLight.Position - TexelToVertex.Position);
 						Ray LightRay;
-						LightRay.Origin = TexelToVertex.Position - 3.0f * glm::normalize(Vec3(TexelToVertex.Normal.x, TexelToVertex.Normal.y, TexelToVertex.Normal.z));
+						LightRay.Origin = TexelToVertex.Position + 3.0f * glm::normalize(TexelToVertex.Normal);
 						LightRay.Direction = glm::normalize(LightPosition - LightRay.Origin);
 						Intersection Intersection;
 						if (!BVHTree.Intersect(LightRay, Intersection))
@@ -713,13 +713,13 @@ struct StaticLightingSystem
 							for (int HighResX = 0; HighResX < UpSampleFactor; HighResX++)
 							{
 								VisibilitySample& HighResSample = CurrentSample.HighResolutionSamples[HighResY * UpSampleFactor + HighResX];
-								//if (HighResSample.GetMapped()) // Test
+								if (HighResSample.GetMapped()) // Test
 								{
 									Vec3 Position = HighResSample.GetPosition();
 									Vec3 Direction = glm::normalize(DirectionLight.Position - HighResSample.GetPosition());
 									Ray ray;
 									Vec3 Normal = Vec3(HighResSample.GetNormal().x, HighResSample.GetNormal().y, HighResSample.GetNormal().z);
-									ray.Origin = Position - 3.0f * glm::normalize(Normal);
+									ray.Origin = Position + 3.0f * glm::normalize(HighResSample.GetNormal());
 									ray.Direction = glm::normalize(DirectionLight.Position - ray.Origin);
 
 									Intersection Inter;
@@ -843,13 +843,14 @@ struct StaticLightingSystem
 												}
 
 												const LowResolutionVisibilitySample& LowResScatterSample = Visibility2D(LowResScatterX, LowResScatterY);
+												
 												if (LowResScatterSample.GetMapped())
 												{
 													bool CurrentRegion = false;
 													Vec3 ScatterPosition;
 													Vec3 ScatterNormal;
 													bool FoundScatterPosition = false;
-
+												
 													if (LowResScatterSample.NeedHighResolutionSamples)
 													{
 														int CenterSampleIndex = (UpSampleFactor / 2) * UpSampleFactor + UpSampleFactor / 2;
@@ -883,7 +884,7 @@ struct StaticLightingSystem
 															}
 														}
 													}
-
+													
 													if (!FoundScatterPosition)
 													{
 														CurrentRegion = LowResScatterSample.GetVisible();
@@ -892,7 +893,7 @@ struct StaticLightingSystem
 													}
 													
 													const float TransitionDistance = glm::length(ScatterPosition - HighResSample.GetPosition());
-													const float NormalizedDistance = glm::clamp(TransitionDistance / 50, 0.0f , 1.0f);
+													const float NormalizedDistance = glm::clamp(TransitionDistance / MaxTransitionDistanceWorldSpace, 0.0f , 1.0f);
 													SignedDistanceFieldShadowSampleData& FinalShadowSample = (*ShadowMapData)(LowResScatterX, LowResScatterY);
 													if (NormalizedDistance * 0.5f < std::abs(FinalShadowSample.Distance - 0.5f))
 													{

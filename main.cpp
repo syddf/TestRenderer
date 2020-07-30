@@ -25,7 +25,7 @@ int main()
 	DirectionalLight Light;
 	Light.Position = Vec3(-6480025.50, 5497625.50, 5271184.50);
 	Light.Direction = Vec3(1.0f, 0.0f, 0.0f);
-	StaticLighting.RunStaticLighting(LightingMeshVec, 256, 256, Light);
+	StaticLighting.RunStaticLighting(LightingMeshVec, 512, 512, Light);
 
 	/*
 

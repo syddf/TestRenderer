@@ -146,7 +146,7 @@ struct Triangle
         }
         float t = glm::dot(e2, Q) * inv_det;
         
-        if (t > EPSILON && t < intersection.T)
+        if (t > 0 && t < intersection.T)
         {
             intersection.Position = ray.Origin + t * ray.Direction;
 			intersection.Normal = u * V1.Normal + v * V2.Normal + (1.0f - u - v) * V0.Normal;
