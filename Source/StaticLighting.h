@@ -128,9 +128,9 @@ public:
 		Pixels.reserve(SizeX * SizeY * 4);
 		for (int i = 0; i < Data.size(); i++)
 		{
-			Pixels.push_back(Data[i].GetHighResMappedCount() * 10);
-			Pixels.push_back(Data[i].GetHighResMappedCount() * 10);
-			Pixels.push_back(255);
+			Pixels.push_back(Data[i].NeedHighResolutionSamples ? 255 : 0);
+			Pixels.push_back(Data[i].NeedHighResolutionSamples ? 255 : 0);
+			Pixels.push_back(Data[i].NeedHighResolutionSamples ? 255 : 0);
 			Pixels.push_back(255);
 		}
 		OutputImageHelper::OutputPNG("tmp.png", Pixels, SizeX, SizeY);
@@ -570,7 +570,7 @@ struct StaticLightingSystem
 						const Vec3 LightPosition = DirectionLight.Position;
 						const Vec3 LightVec = glm::normalize(DirectionLight.Position - TexelToVertex.Position);
 						Ray LightRay;
-						LightRay.Origin = TexelToVertex.Position + 3.0f * glm::normalize(TexelToVertex.Normal);
+						LightRay.Origin = TexelToVertex.Position + 0.1f * glm::normalize(TexelToVertex.Normal);
 						LightRay.Direction = glm::normalize(LightPosition - LightRay.Origin);
 						Intersection Intersection;
 						if (!BVHTree.Intersect(LightRay, Intersection))
@@ -581,6 +581,8 @@ struct StaticLightingSystem
 					}
 				}
 			}
+
+			Visibility2D.Output();
 
 			// Phase 2 : Detecting Additional Sampling Required、Rasterize High Resolution Samples
 			int HighResolutionX = Width * UpSampleFactor;
@@ -719,7 +721,7 @@ struct StaticLightingSystem
 									Vec3 Direction = glm::normalize(DirectionLight.Position - HighResSample.GetPosition());
 									Ray ray;
 									Vec3 Normal = Vec3(HighResSample.GetNormal().x, HighResSample.GetNormal().y, HighResSample.GetNormal().z);
-									ray.Origin = Position + 3.0f * glm::normalize(HighResSample.GetNormal());
+									ray.Origin = Position + 0.1f * glm::normalize(HighResSample.GetNormal());
 									ray.Direction = glm::normalize(DirectionLight.Position - ray.Origin);
 
 									Intersection Inter;
@@ -831,16 +833,11 @@ struct StaticLightingSystem
 
 										for (int ScatterOffsetY = -LowResScatterTexelsCountY; ScatterOffsetY <= LowResScatterTexelsCountY; ScatterOffsetY++)
 										{
-											const int LowResScatterY = ScatterOffsetY + LowResY;
-											if (LowResScatterY < 0 || LowResScatterY >= Height)
-												continue;
 											for (int ScatterOffsetX = -LowResScatterTexelsCountX; ScatterOffsetX <= LowResScatterTexelsCountX; ScatterOffsetX++)
 											{
-												const int LowResScatterX = ScatterOffsetX + LowResX;
-												if (LowResScatterX < 0 || LowResScatterX >= Width)
-												{
-													continue;
-												}
+												//更新相应的低分辨率纹素的距离场结果
+											}
+										}
 
 												const LowResolutionVisibilitySample& LowResScatterSample = Visibility2D(LowResScatterX, LowResScatterY);
 												

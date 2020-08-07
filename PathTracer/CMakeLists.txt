@@ -1,0 +1,9 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+
+PROJECT(PathTracer)
+
+FILE (GLOB SOURCE_LIST "./*.cpp" "./*.h")
+list (APPEND SOURCE_LIST ${CMAKE_SOURCE_DIR}/Source/Prefix.h)
+ADD_EXECUTABLE(pt ${SOURCE_LIST})
+
+include_directories(${CMAKE_SOURCE_DIR}/External/glm)

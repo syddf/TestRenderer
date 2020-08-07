@@ -5,6 +5,8 @@ if(WIN32)
     add_subdirectory(AssetImporter)
 endif()
 
+add_subdirectory(PathTracer)
+
 # project variables
 MESSAGE(STATUS "platform: ${CMAKE_SYSTEM_NAME}")
 include_directories(${CMAKE_SOURCE_DIR}/External/Vulkan/include)
