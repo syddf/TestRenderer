@@ -1,6 +1,6 @@
 #ifndef VULKAN_WIN32_H_
 #define VULKAN_WIN32_H_ 1
-
+#include <Windows.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
