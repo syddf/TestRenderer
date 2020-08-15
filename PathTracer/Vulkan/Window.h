@@ -1,6 +1,4 @@
 #pragma once
-#include "./../../Source/Prefix.h"
-#include "./../GraphicsAPICommon/GraphicsInterface.h"
 #include "VulkanCommon.h"
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -15,9 +13,14 @@ public:
 	void CreateGLFWWindow();
 	void InitializeSurface(VkInstance instance);
 	void MainLoop();
+	bool InitPresentFamily(VkPhysicalDevice physicalDevice);
+
+	VkSurfaceKHR GetVulkanSurface() const { return mSurface;  }
+	UInt32 GetPresentFamily() const { return mPresentFamily; }
 
 private:
 	VkSurfaceKHR mSurface;
 	GLFWwindow* mWindow;
 	VkInstance mInstance;
+	UInt32 mPresentFamily;
 };

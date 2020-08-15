@@ -37,3 +37,33 @@ void VulkanWindow::MainLoop()
 		glfwPollEvents();
 	}
 }
+
+bool VulkanWindow::InitPresentFamily(VkPhysicalDevice physicalDevice)
+{
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+
+	UInt32 graphicsFamily = 0;
+	int i = 0;
+	for (const auto& queueFamily : queueFamilies)
+	{
+		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+		{
+			graphicsFamily = i;
+		}
+
+		VkBool32 presentSupport = false;
+		vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, mSurface, &presentSupport);
+
+		if (presentSupport)
+		{
+			mPresentFamily = i;
+			return true;
+		}
+		i++;
+	}
+	return false;
+}

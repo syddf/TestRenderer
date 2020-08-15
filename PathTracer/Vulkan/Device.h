@@ -1,8 +1,5 @@
 #pragma once
-#include "./../../Source/Prefix.h"
-#include "./../GraphicsAPICommon/GraphicsInterface.h"
 #include "VulkanCommon.h"
-
 
 class VulkanDevice : public IDevice
 {
@@ -12,6 +9,11 @@ public:
 
 public:
 	VkInstance GetInstance() const { return mInstance; }
+	VkPhysicalDevice GetPhysicalDevice() const { return mPhysicalDevice; }
+	VkDevice GetDevice() const { return mDevice; }
+	UInt32 GetGraphicsFamily() const { return mGraphicsQueueFamily; }
+	UInt32 GetComputeFamily() const { return mComputeQueueFamily; }
+	UInt32 GetTransferFamily() const { return mTransferQueueFamily; }
 
 private:
 	void InitializeInstance();

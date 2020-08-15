@@ -3,6 +3,7 @@
 
 extern bool gNeedDebugLayer;
 bool enableValidationLayers = true;
+VkDevice gVulkanDevice = VK_NULL_HANDLE;
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) 
 {
@@ -235,6 +236,10 @@ void VulkanDevice::InitializeLogicalDevice()
 	{
 		"VK_LAYER_KHRONOS_validation"
 	};
+	const std::vector<const char*> deviceExtensions = 
+	{
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
 	if (enableValidationLayers && gNeedDebugLayer) 
 	{
 		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
@@ -244,9 +249,15 @@ void VulkanDevice::InitializeLogicalDevice()
 	{
 		createInfo.enabledLayerCount = 0;
 	}
-
+	createInfo.enabledExtensionCount = deviceExtensions.size();
+	createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 	VKFUNC(vkCreateDevice(mPhysicalDevice, &createInfo, nullptr, &mDevice), "Failed To Create Logical Device.");
 	vkGetDeviceQueue(mDevice, mGraphicsQueueFamily, 0, &mGraphicsQueue);
 	vkGetDeviceQueue(mDevice, mComputeQueueFamily, 0, &mComputeQueue);
 	vkGetDeviceQueue(mDevice, mTransferQueueFamily, 0, &mTransferQueue);
+
+	if (gVulkanDevice == VK_NULL_HANDLE)
+	{
+		gVulkanDevice = mDevice;
+	}
 }

@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <memory>
 
 typedef glm::vec4 Vec4;
 typedef glm::vec3 Vec3;
