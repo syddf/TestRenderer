@@ -85,6 +85,15 @@ public:
 		helper(FileStream, Object);
 	}
 
+	void ReadAllBinaryFile(std::vector<char>& buffer)
+	{
+		FileStream.seekg(0, std::ios::end);
+		auto BytesSize = FileStream.tellg();
+		FileStream.seekg(0, std::ios::beg);
+		buffer.resize(BytesSize);
+		FileStream.read(buffer.data(), BytesSize);
+	}
+
 public:
 	std::fstream FileStream;
 };

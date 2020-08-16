@@ -27,8 +27,19 @@ source_group("Vulkan/" FILES
 ./Vulkan/Window.cpp 
 ./Vulkan/SwapChain.h 
 ./Vulkan/SwapChain.cpp 
+./Vulkan/Image.h
+./Vulkan/ImageView.h
+./Vulkan/Image.cpp
+./Vulkan/ImageView.cpp
+./Vulkan/Shader.h
+./Vulkan/Shader.cpp
+./Vulkan/RenderPass.h
+./Vulkan/RenderPass.cpp
 )
-source_group("GraphicsAPICommon/" FILES ./GraphicsAPICommon/GraphicsInterface.h)
+source_group("GraphicsAPICommon/" FILES 
+./GraphicsAPICommon/GraphicsInterface.h
+./GraphicsAPICommon/GraphicsStructure.h
+)
 
 if (UNIX AND NOT APPLE)
     MESSAGE(STATUS "unix")
