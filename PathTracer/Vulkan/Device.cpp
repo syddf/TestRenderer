@@ -1,9 +1,14 @@
 #include "Device.h"
+#include "TranslateEngine.h"
+#include "CommandBufferPool.h"
 #include <GLFW/glfw3.h>
 
 extern bool gNeedDebugLayer;
 bool enableValidationLayers = true;
 VkDevice gVulkanDevice = VK_NULL_HANDLE;
+VkPhysicalDevice gVulkanPhysicalDevice = VK_NULL_HANDLE;
+ITranslationEngine* gTranslateEngine = nullptr;
+VulkanCommandBufferPool* gGraphicsCommonCommandBufferPool = nullptr;
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) 
 {
@@ -34,6 +39,9 @@ VulkanDevice::VulkanDevice()
 
 VulkanDevice::~VulkanDevice()
 {
+	delete gTranslateEngine;
+	delete gGraphicsCommonCommandBufferPool;
+
 	vkDestroyDevice(mDevice, nullptr);
 
 	if (enableValidationLayers && gNeedDebugLayer) 
@@ -153,6 +161,7 @@ void VulkanDevice::InitializePhysicalDevice()
 		if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
 		{
 			mPhysicalDevice = devices[physicalDeviceIndex];
+			gVulkanPhysicalDevice = mPhysicalDevice;
 			break;
 		}
 	}
@@ -260,4 +269,7 @@ void VulkanDevice::InitializeLogicalDevice()
 	{
 		gVulkanDevice = mDevice;
 	}
+
+	gTranslateEngine = new VulkanTranslateEngine(mTransferQueueFamily, mTransferQueue);
+	gGraphicsCommonCommandBufferPool = new VulkanCommandBufferPool(mGraphicsQueueFamily, true, false, mGraphicsQueue);
 }

@@ -1,8 +1,13 @@
 #pragma once
 
+#include "./../../Source/Prefix.h"
+
 class ImageViewDesc;
 class RenderingPipelineNodeDesc;
-#include "./../../Source/Prefix.h"
+class ImageDesc;
+class BufferDesc;
+class TranslateBufferToImageDesc;
+class IImageView;
 
 class IDevice
 {
@@ -26,17 +31,29 @@ public:
 class IImage
 {
 public:
+	using ImagePtr = std::shared_ptr<IImage>;
 	virtual ~IImage() {};
-	virtual void CreateImage(ImageDesc desc);
+	virtual void CreateImage(ImageDesc desc) = 0;
 	virtual char* GetGPUImageHandleAddress() = 0;
+	virtual char* GetGPUImageViewHandleAddress() = 0;
 };
 
 class IImageView
 {
 public:
+	using ImageViewPtr = std::shared_ptr<IImageView>;
 	virtual ~IImageView() {};
 	virtual void CreateImageView(ImageViewDesc desc) = 0;
 	virtual char* GetGPUImageViewHandleAddress() = 0;
+};
+
+class IBuffer
+{
+public:
+	using BufferPtr = std::shared_ptr<IBuffer>;
+	virtual ~IBuffer() {};
+	virtual void CreateBuffer(BufferDesc desc) = 0;
+	virtual char* GetGPUBufferHandleAddress() = 0;
 };
 
 class IRenderingPipelineNode
@@ -56,9 +73,9 @@ public:
 	virtual void GenerateRenderingGraph(std::vector<NodePtr>& nodesVec) = 0;
 };
 
-class ITextureManager
+class ITranslationEngine
 {
 public:
-	virtual ~ITextureManager() {};
-	virtual void CreateTexture(std::string texName);
+	virtual ~ITranslationEngine() {};
+	virtual void TranslateBufferToTexture(TranslateBufferToImageDesc desc) = 0;
 };

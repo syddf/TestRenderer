@@ -8,6 +8,7 @@ ADD_EXECUTABLE(importer ${SOURCE_LIST})
 
 include_directories(${CMAKE_SOURCE_DIR}/External/glm)
 include_directories(${CMAKE_SOURCE_DIR}/External/Assimp/include)
+include_directories(${CMAKE_SOURCE_DIR}/External/stb_image)
 link_directories(${CMAKE_SOURCE_DIR}/External/Assimp/lib/)
 target_link_libraries(importer ${CMAKE_SOURCE_DIR}/External/Assimp/lib/assimp-vc140-mt.lib)
 

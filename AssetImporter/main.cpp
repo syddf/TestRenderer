@@ -7,8 +7,8 @@ int main(int argc, char** argv)
 	char buffer[256];
 	getcwd(buffer, 256);
 	std::string path = buffer;
-	std::string srcPath = path + "/../../Asset/Src/Cornell.fbx";
-	std::string dstPath = path + "/../../Asset/Dst/Cornell.data";
+	std::string srcPath = path + "/../../Asset/Src/red.png";
+	std::string dstPath = path + "/../../Asset/Dst/red.data";
 	AssetImporter importer;
 	importer.ImportAsset(srcPath, dstPath);
 	return 0;

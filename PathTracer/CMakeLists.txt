@@ -18,11 +18,13 @@ ADD_EXECUTABLE(pt ${SRC_LIST})
 include_directories(${CMAKE_SOURCE_DIR}/External/glm)
 include_directories(${CMAKE_SOURCE_DIR}/External/Glfw/include)
 include_directories(${CMAKE_SOURCE_DIR}/External/Vulkan/include)
+include_directories(${CMAKE_SOURCE_DIR}/External/stb_image)
 
 source_group("Vulkan/" FILES 
 ./Vulkan/Device.h 
 ./Vulkan/Device.cpp 
 ./Vulkan/VulkanCommon.h
+./Vulkan/VulkanCommon.cpp
 ./Vulkan/Window.h 
 ./Vulkan/Window.cpp 
 ./Vulkan/SwapChain.h 
@@ -35,7 +37,18 @@ source_group("Vulkan/" FILES
 ./Vulkan/Shader.cpp
 ./Vulkan/RenderPass.h
 ./Vulkan/RenderPass.cpp
+./Vulkan/TranslateEngine.h
+./Vulkan/TranslateEngine.cpp
+./Vulkan/ResourceCreator.h
+./Vulkan/ResourceCreator.cpp
+./Vulkan/RenderingPipeline.h
+./Vulkan/RenderingPipeline.cpp
+./Vulkan/CommandBufferPool.h
+./Vulkan/CommandBufferPool.cpp
+./Vulkan/Buffer.h
+./Vulkan/Buffer.cpp
 )
+
 source_group("GraphicsAPICommon/" FILES 
 ./GraphicsAPICommon/GraphicsInterface.h
 ./GraphicsAPICommon/GraphicsStructure.h

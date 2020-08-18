@@ -13,7 +13,9 @@ enum TextureDimension
 
 enum TextureFormat
 {
+	TF_UNDEFINED,
 	TF_R8G8B8A8UInt,
+	TF_R8G8B8SRGB,
 	TF_R8G8B8A8SRGB,
 	TF_B8G8R8A8SRGB,
 	TF_R32G32B32A32SFloat,
@@ -45,6 +47,17 @@ enum TextureUsageBits
 
 typedef UInt32 TextureUsage;
 
+enum BufferUsageBits
+{
+	BU_VERTEX_BUFFER = 0x00000001,
+	BU_INDEX_BUFFER = 0x00000002,
+	BU_TRANSFER_SRC = 0x00000004,
+	BU_TRANSFER_DST = 0x00000008,
+	BU_UNIFORM_BUFFER = 0x00000010
+};
+
+typedef UInt32 BufferUsage;
+
 enum PipelineBindPoint
 {
 	BP_GRAPHICS,
@@ -62,6 +75,27 @@ struct ImageDesc
 	TextureDimension Dimension;
 	TextureFormat Format;
 	TextureUsage Usage;
+	bool GenerateMipMap = false;
+};
+
+struct BufferDesc
+{
+	UInt32 Size;
+	BufferUsage Usage;
+	char* BufferData = nullptr;
+};
+
+struct TranslateBufferToImageDesc
+{
+	char* GPUBufferHandlePtr;
+	char* GPUImageHandlePtr;
+	TextureUsageBits DstTextureAspect;
+	UInt32 DstTextureMipLevel;
+	UInt32 DstTextureBaseLayer;
+	UInt32 DstTextureLayerCount;
+	UInt32 DstTextureOffset[3];
+	UInt32 DstTextureExtent[3];
+	UInt32 SrcBufferOffset;
 };
 
 struct ImageViewDesc

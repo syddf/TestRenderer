@@ -26,6 +26,8 @@ static VkFormat GetVKTextureFormat(TextureFormat format)
 			return VkFormat::VK_FORMAT_R8G8B8A8_SRGB;
 		case TextureFormat::TF_B8G8R8A8SRGB:
 			return VkFormat::VK_FORMAT_B8G8R8A8_SRGB;
+		case TextureFormat::TF_R8G8B8SRGB:
+			return VkFormat::VK_FORMAT_R8G8B8_SRGB;
 	}
 	return VkFormat::VK_FORMAT_UNDEFINED;
 }
@@ -108,7 +110,7 @@ static VkImageUsageFlagBits GetVKImageUsageFlagBits(TextureUsageBits usage)
 			return VK_IMAGE_USAGE_SAMPLED_BIT;
 		case TextureUsageBits::TU_TRANSFER_SRC:
 			return VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-		case TextureUsageBits::TU_TRENSFER_DST:
+		case TextureUsageBits::TU_TRANSFER_DST:
 			return VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	}
 	return VkImageUsageFlagBits::VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
@@ -139,3 +141,110 @@ static VkImageUsageFlags GetVKImageUsageFlags(TextureUsage usage)
 	}
 	return res;
 }
+
+static VkBufferUsageFlagBits GetVKBufferUsageFlagBits(BufferUsageBits usage)
+{
+	switch (usage)
+	{
+		case BufferUsageBits::BU_VERTEX_BUFFER:
+			return VkBufferUsageFlagBits::VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		case BufferUsageBits::BU_INDEX_BUFFER:
+			return VkBufferUsageFlagBits::VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		case BufferUsageBits::BU_UNIFORM_BUFFER:
+			return VkBufferUsageFlagBits::VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		case BufferUsageBits::BU_TRANSFER_SRC:
+			return VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		case BufferUsageBits::BU_TRANSFER_DST:
+			return VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	}
+	return VkBufferUsageFlagBits::VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
+}
+
+static VkBufferUsageFlags GetVKBufferUsageFlags(BufferUsage usage)
+{
+	UInt32 res = 0;
+	if (usage & BufferUsageBits::BU_VERTEX_BUFFER)
+	{
+		res |= GetVKBufferUsageFlagBits(BufferUsageBits::BU_VERTEX_BUFFER);
+	}
+	if (usage & BufferUsageBits::BU_INDEX_BUFFER)
+	{
+		res |= GetVKBufferUsageFlagBits(BufferUsageBits::BU_INDEX_BUFFER);
+	}
+	if (usage & BufferUsageBits::BU_TRANSFER_SRC)
+	{
+		res |= GetVKBufferUsageFlagBits(BufferUsageBits::BU_TRANSFER_SRC);
+	}
+	if (usage & BufferUsageBits::BU_TRANSFER_DST)
+	{
+		res |= GetVKBufferUsageFlagBits(BufferUsageBits::BU_TRANSFER_DST);
+	}
+	if (usage & BufferUsageBits::BU_UNIFORM_BUFFER)
+	{
+		res |= GetVKBufferUsageFlagBits(BufferUsageBits::BU_UNIFORM_BUFFER);
+	}
+	return res;
+}
+
+static VkMemoryPropertyFlags  GetVKBufferMemoryProperty(BufferUsage usage)
+{
+	VkMemoryPropertyFlags property = 0;
+	if (usage & BufferUsageBits::BU_VERTEX_BUFFER)
+	{
+		property |= VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	}
+	else if (usage & BufferUsageBits::BU_INDEX_BUFFER)
+	{
+		property |= VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	}
+	else if (usage & BufferUsageBits::BU_UNIFORM_BUFFER)
+	{
+		property |= VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	}
+	else if (usage & BufferUsageBits::BU_TRANSFER_SRC)
+	{
+		property |= VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	}
+	return property;
+}
+
+static VkImageAspectFlagBits GetVKAspectFlagBits(TextureUsage usage)
+{
+	if (usage & TextureUsageBits::TU_DEPTH_STENCIL)
+	{
+		return VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT;
+	}
+	return VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT;
+}
+
+static TextureUsageBits GetTextureAspectFlagBits(TextureUsage usage)
+{
+	if (usage & TextureUsageBits::TU_DEPTH_STENCIL)
+		return TU_DEPTH_STENCIL;
+	return TU_COLOR_ATTACHMENT;
+}
+
+static int GetVKFormatSize(VkFormat format)
+{
+	switch (format)
+	{
+	case VkFormat::VK_FORMAT_R8G8B8A8_UINT:
+		return 4;
+	case VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT:
+		return 16;
+	case VkFormat::VK_FORMAT_R8G8B8A8_SRGB:
+		return 4;
+	case VkFormat::VK_FORMAT_B8G8R8A8_SRGB:
+		return 4;
+	case VkFormat::VK_FORMAT_R8G8B8_SRGB:
+		return 3;
+	}
+	return 0;
+}
+
+static int GetVKTextureSize(ImageDesc desc)
+{
+	return desc.ArrayLayers * desc.Depth * desc.Width * desc.Height * GetVKFormatSize(GetVKTextureFormat(desc.Format));
+}
+
+UInt32 GetVKMemoryType(UInt32 typeFilter, VkMemoryPropertyFlags propertyFlags);

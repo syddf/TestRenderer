@@ -12,6 +12,7 @@ MESSAGE(STATUS "platform: ${CMAKE_SYSTEM_NAME}")
 include_directories(${CMAKE_SOURCE_DIR}/External/Vulkan/include)
 include_directories(${CMAKE_SOURCE_DIR}/External/Glfw/include)
 include_directories(${CMAKE_SOURCE_DIR}/External/glm)
+include_directories(${CMAKE_SOURCE_DIR}/External/stb_image)
 
 AUX_SOURCE_DIRECTORY(. SRC_LIST)
 FILE (GLOB SOURCE_LIST "./Source/*.cpp" "./Source/*.h")

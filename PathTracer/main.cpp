@@ -9,10 +9,12 @@
 #include "Vulkan/Device.h"
 #include "Vulkan/Window.h"
 #include "Vulkan/SwapChain.h"
+#include "Vulkan/ResourceCreator.h"
 
 bool gNeedDebugLayer = true;
 UInt32 gScreenWidth = 800;
 UInt32 gScreenHeight = 600;
+
 int main() 
 {	
 	glfwInit();
@@ -30,7 +32,9 @@ int main()
 			static_cast<VulkanDevice*>(device)->GetGraphicsFamily(),
 			static_cast<VulkanWindow*>(window)->GetPresentFamily()
 		);
+		ResourceCreator::CreateImageFromFile("./../../Asset/Dst/red.data");
 		window->MainLoop();
+		delete swapChain;
 	}
 	delete window;
 	delete device;

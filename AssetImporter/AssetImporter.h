@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ModelImporter.h"
+#include "TextureImporter.h"
 #include "ImportAsset.h"
 #include "./../Source/PathHelper.h"
 
@@ -13,6 +14,10 @@ public:
 		{
 			return AssetType::SceneData;
 		}
+		else if (SuffixName == "png")
+		{
+			return AssetType::TextureData;
+		}
 		return AssetType::ErrorType;
 	}
 
@@ -24,8 +29,11 @@ public:
 			return false;
 		else if (AssetType == AssetType::SceneData)
 			return ModelImporter.Load(SrcAssetFile, TarAssetFile);
+		else if (AssetType == AssetType::TextureData)
+			return TextureImporter.Load2DTexture(SrcAssetFile, TarAssetFile);
 	}
 
 private:
 	ModelImporter ModelImporter;
+	TextureImporter TextureImporter;
 };
