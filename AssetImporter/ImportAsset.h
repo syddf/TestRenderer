@@ -8,7 +8,8 @@ enum AssetType
 {
 	ErrorType,
 	SceneData,
-	TextureData
+	TextureData,
+	SPIRVShaderData
 };
 
 struct ImportAsset

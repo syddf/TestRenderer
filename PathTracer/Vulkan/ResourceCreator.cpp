@@ -37,6 +37,28 @@ IImage::ImagePtr ResourceCreator::CreateImageFromFile(std::string imageFile)
 	return imgPtr;
 }
 
+IBuffer::BufferPtr ResourceCreator::CreateVertexBuffer(char * bufferData, UInt32 bufferSize)
+{
+	BufferDesc desc = {};
+	desc.BufferData = bufferData;
+	desc.Size = bufferSize;
+	desc.Usage = BufferUsageBits::BU_VERTEX_BUFFER;
+
+	IBuffer::BufferPtr vertexBuffer = std::make_shared<VulkanBuffer>(desc);
+	return vertexBuffer;
+}
+
+IBuffer::BufferPtr ResourceCreator::CreateIndexBuffer(char * bufferData, UInt32 bufferSize)
+{
+	BufferDesc desc = {};
+	desc.BufferData = bufferData;
+	desc.Size = bufferSize;
+	desc.Usage = BufferUsageBits::BU_INDEX_BUFFER;
+
+	IBuffer::BufferPtr indexBuffer = std::make_shared<VulkanBuffer>(desc);
+	return indexBuffer;
+}
+
 TextureDimension ResourceCreator::GetTextureDimension(TextureTypeEnum texType)
 {
 	if (texType == TextureTypeEnum::ImportTexture2D)

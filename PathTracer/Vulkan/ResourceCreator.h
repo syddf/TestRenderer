@@ -11,6 +11,8 @@ class ResourceCreator
 public:
 	static IBuffer::BufferPtr CreateStagingBuffer(char* bufferData, UInt32 bufferSize);
 	static IImage::ImagePtr CreateImageFromFile(std::string imageFile);
+	static IBuffer::BufferPtr CreateVertexBuffer(char* bufferData, UInt32 bufferSize);
+	static IBuffer::BufferPtr CreateIndexBuffer(char* bufferData, UInt32 bufferSize);
 
 	static TextureDimension GetTextureDimension(TextureTypeEnum texType);
 	static TextureFormat GetImageImportDataFormat(int channel)
