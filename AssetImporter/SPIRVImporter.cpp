@@ -82,6 +82,19 @@ void SPIRVImporter::ProcessInstruction(short op, const std::vector<SPIRVWord>& o
 		case 71:
 			ProcessOpDecorate(operands);
 			break;
+		case 72:
+			ProcessOpMemberDecorate(operands);
+			break;
+	}
+	if (op >= 20 && op <= 30)
+	{
+		ProcessOpType(op, operands);
+	}
+	if (op == 43)
+	{
+		int id = operands[1].wordValue;
+		int intVal = operands[2].wordValue;
+		mSPIRVGlobalState.OpIntConstant[id] = intVal;
 	}
 }
 
@@ -128,18 +141,7 @@ void SPIRVImporter::ProcessOpTypePointer(const std::vector<SPIRVWord>& operands)
 	SPIRV_OpTypePointer typePointer;
 	typePointer.id = id;
 	typePointer.typeId = operands[2].wordValue;
-	if (storage == 2)
-	{
-		mSPIRVGlobalState.OpUniformBufferParamTypePointer[id] = typePointer;
-	}
-	else if (storage == 9)
-	{
-		mSPIRVGlobalState.OpUniformPushConstantBufferParamPointer[id] = typePointer;
-	}
-	else if (storage == 11)
-	{
-		mSPIRVGlobalState.OpTextureTypePointer[id] = typePointer;
-	}
+	mSPIRVGlobalState.OpTypePointer[id] = typePointer;
 }
 
 void SPIRVImporter::ProcessOpDecorate(const std::vector<SPIRVWord>& operands)
@@ -172,6 +174,113 @@ void SPIRVImporter::ProcessOpVariable(const std::vector<SPIRVWord>& operands)
 	mSPIRVGlobalState.OpVariable[opVariable.id] = opVariable;
 }
 
+void SPIRVImporter::ProcessOpType(short op, const std::vector<SPIRVWord>& operands)
+{
+	SPIRV_OpType opType;
+	if (op == 20)
+	{
+		int id = operands[0].wordValue;
+		opType.width = 1;
+		opType.typeEnum = SPIRV_TypeEnum::TE_Bool;
+		mSPIRVGlobalState.OpType[id] = opType;
+	}
+	else if (op == 21)
+	{
+		int id = operands[0].wordValue;
+		opType.width = operands[1].wordValue;
+		opType.typeEnum = SPIRV_TypeEnum::TE_Int;
+		opType.typeSize = operands[1].wordValue / 8;
+		mSPIRVGlobalState.OpType[id] = opType;
+	}
+	else if (op == 22)
+	{
+		int id = operands[0].wordValue;
+		opType.typeEnum = SPIRV_TypeEnum::TE_Float;
+		opType.width = operands[1].wordValue;
+		opType.typeSize = operands[1].wordValue / 8;
+		mSPIRVGlobalState.OpType[id] = opType;
+	}
+	else if (op == 23)
+	{
+		int id = operands[0].wordValue;
+		opType.parentType = operands[1].wordValue;
+		opType.typeEnum = SPIRV_TypeEnum::TE_Vector;
+		opType.width = operands[2].wordValue;
+		opType.typeSize = opType.width * mSPIRVGlobalState.OpType[opType.parentType].typeSize;
+		mSPIRVGlobalState.OpType[id] = opType;
+	}
+	else if (op == 24)
+	{
+		int id = operands[0].wordValue;
+		opType.typeEnum = SPIRV_TypeEnum::TE_Matrix;
+		opType.width = 1;
+		opType.typeSize = 64;
+		mSPIRVGlobalState.OpType[id] = opType;
+	}
+	else if (op == 25)
+	{
+		int id = operands[0].wordValue;
+		opType.typeEnum = SPIRV_TypeEnum::TE_Image;
+		opType.sampleTypeId = operands[1].wordValue;
+		opType.dimension = operands[2].wordValue;
+		opType.arrayed = operands[4].wordValue;
+		opType.combineSampled = operands[5].wordValue;
+		mSPIRVGlobalState.OpType[id] = opType;
+	}
+	else if (op == 26)
+	{
+		int id = operands[0].wordValue;
+		opType.typeEnum = SPIRV_TypeEnum::TE_Sampler;
+		mSPIRVGlobalState.OpType[id] = opType;
+	}
+	else if (op == 27)
+	{
+		int id = operands[0].wordValue;
+		opType.parentType = operands[1].wordValue;
+		opType.typeEnum = SPIRV_TypeEnum::TE_SamplerImage;
+		mSPIRVGlobalState.OpType[id] = opType;
+	}
+	else if (op == 28)
+	{
+		int id = operands[0].wordValue;
+		opType.parentType = operands[1].wordValue;
+		opType.width = mSPIRVGlobalState.OpIntConstant[operands[2].wordValue];
+		opType.typeSize = opType.width + ArrayPaddingSize(mSPIRVGlobalState.OpType[opType.parentType].typeSize);
+		opType.typeEnum = SPIRV_TypeEnum::TE_Array;
+		mSPIRVGlobalState.OpType[id] = opType;
+	}
+	else if (op == 30)
+	{
+		int id = operands[0].wordValue;
+		opType.typeEnum = SPIRV_TypeEnum::TE_Struct;
+		opType.width = operands.size() - 1;
+		for (int i = 1; i < operands.size(); i++)
+		{
+			opType.memberTypeId.push_back(operands[i].wordValue);
+		}
+		int maxOffset = GetMemberOffset(id, opType.memberTypeId.size() - 1);
+		int lastChildSize = mSPIRVGlobalState.OpType[opType.memberTypeId.back()].typeSize;
+		opType.typeSize = ArrayPaddingSize(maxOffset + lastChildSize);
+		mSPIRVGlobalState.OpType[id] = opType;
+	}
+}
+
+void SPIRVImporter::ProcessOpMemberDecorate(const std::vector<SPIRVWord>& operands)
+{
+	int structureType = operands[0].wordValue;
+	int member = operands[1].wordValue;
+	int decoration = operands[2].wordValue;
+	if (decoration == 35)
+	{
+		int val = operands[3].wordValue;
+		SPIRV_OpMemberOffsetDecorate decorate;
+		decorate.parentId = structureType;
+		decorate.member = member;
+		decorate.offset = val;
+		mSPIRVGlobalState.OpMemberOffsetDecorate.push_back(decorate);
+	}
+}
+
 std::string SPIRVImporter::LoadString(const std::vector<SPIRVWord>& operands, int& index)
 {
 	std::string res = "";
@@ -185,4 +294,29 @@ std::string SPIRVImporter::LoadString(const std::vector<SPIRVWord>& operands, in
 	}
 	index = i;
 	return res;
+}
+
+int SPIRVImporter::GetMemberOffset(int structId, int member)
+{
+	for (auto mo : mSPIRVGlobalState.OpMemberOffsetDecorate)
+	{
+		if (mo.member == member && mo.parentId == structId) return mo.offset;
+	}
+	return 0;
+}
+
+void SPIRVImporter::CalcAllTypeOffset()
+{
+}
+
+void SPIRVImporter::CalcAllBlockSize()
+{
+	for (auto iter = mSPIRVGlobalState.OpType.begin(); iter != mSPIRVGlobalState.OpType.end(); iter++)
+	{
+
+	}
+}
+
+void SPIRVImporter::ExportShaderParameters()
+{
 }

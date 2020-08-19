@@ -64,18 +64,52 @@ struct SPIRV_OpVariable
 	int variableStorage;
 };
 
+enum SPIRV_TypeEnum
+{
+	TE_Vector,
+	TE_Float,
+	TE_Int,
+	TE_Bool,
+	TE_Matrix,
+	TE_Image,
+	TE_Sampler,
+	TE_SamplerImage,
+	TE_Array,
+	TE_Struct
+};
+
+struct SPIRV_OpType
+{
+	int parentType = -1;
+	int width;
+	int dimension;
+	int sampleTypeId;
+	bool arrayed;
+	bool combineSampled;
+	int typeSize = -1;
+	SPIRV_TypeEnum typeEnum;
+	std::vector<int> memberTypeId;
+};
+
+struct SPIRV_OpMemberOffsetDecorate
+{
+	int member;
+	int offset;
+	int parentId;
+};
+
 struct SPIRVGlobalState
 {
 	SPIRV_EntryPoint EntryPoint;
 	std::map<int, SPIRV_OpName> OpNames;
 	std::vector<SPIRV_OpMemberName> OpMemberNames;
-	std::map<int, SPIRV_OpTypePointer> OpUniformBufferParamTypePointer;
-	std::map<int, SPIRV_OpTypePointer> OpUniformPushConstantBufferParamPointer;
-	std::map<int, SPIRV_OpTypePointer> OpTextureTypePointer;
+	std::vector<SPIRV_OpMemberOffsetDecorate> OpMemberOffsetDecorate;
+	std::map<int, SPIRV_OpTypePointer> OpTypePointer;
 	std::map<int, SPIRV_OpBindingDecorate> OpBindingDecorate;
 	std::map<int, SPIRV_OpDescriptorDecorate> OpDescDecorate;
-
 	std::map<int, SPIRV_OpVariable> OpVariable;
+	std::map<int, SPIRV_OpType> OpType;
+	std::map<int, int> OpIntConstant;
 };
 
 class SPIRVImporter
@@ -95,7 +129,19 @@ private:
 	void ProcessOpTypePointer(const std::vector<SPIRVWord>& operands);
 	void ProcessOpDecorate(const std::vector<SPIRVWord>& operands);
 	void ProcessOpVariable(const std::vector<SPIRVWord>& operands);
+	void ProcessOpType(short op, const std::vector<SPIRVWord>& operands);
+	void ProcessOpMemberDecorate(const std::vector<SPIRVWord>& operands);
 	std::string LoadString(const std::vector<SPIRVWord>& operands, int& index);
+	int GetMemberOffset(int structId, int member);
+
+	void CalcAllTypeOffset();
+	void CalcAllBlockSize();
+
+	void ExportShaderParameters();
+	int ArrayPaddingSize(int srcSize)
+	{
+		return (srcSize + 15) / 16 * 16;
+	}
 
 private:
 	SPIRVGlobalState mSPIRVGlobalState;

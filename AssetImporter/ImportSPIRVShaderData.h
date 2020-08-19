@@ -11,6 +11,34 @@ enum ShaderTypeEnum
 	ImportComputeShader
 };
 
+enum ShaderFormat
+{
+	SF_Char,
+	SF_Short,
+	SF_Int,
+	SF_Float,
+	SF_Bool,
+	SF_Matrix,
+	SF_Image
+};
+
+struct ShaderParameter
+{
+	int Count;
+	int Offset;
+	std::string Name;
+	ShaderFormat Format;
+};
+
+struct ShaderBlockInfo
+{
+	std::vector<ShaderParameter> ParamsVec;
+	std::string Name;
+	int Set;
+	int Binding;
+	int BlockSize;
+};
+
 struct ImportSPIRVShaderData : public ImportAsset
 {
 	ImportSPIRVShaderData(ShaderTypeEnum shaderType) : ImportAsset(AssetType::SPIRVShaderData, GlobalAssetVersion)
@@ -20,6 +48,7 @@ struct ImportSPIRVShaderData : public ImportAsset
 
 	ShaderTypeEnum ShaderType;
 	std::vector<char> ShaderData;
+	std::vector<ShaderBlockInfo> ShaderParamsBlockInfo;
 
 	void Serialize(const std::string& TarFileName)
 	{
