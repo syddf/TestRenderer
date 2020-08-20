@@ -57,6 +57,12 @@ struct SPIRV_OpBindingDecorate
 	int bindIndex;
 };
 
+struct SPIRV_OpLocationDecorate
+{
+	int id;
+	int location;
+};
+
 struct SPIRV_OpVariable
 {
 	int id;
@@ -107,9 +113,12 @@ struct SPIRVGlobalState
 	std::map<int, SPIRV_OpTypePointer> OpTypePointer;
 	std::map<int, SPIRV_OpBindingDecorate> OpBindingDecorate;
 	std::map<int, SPIRV_OpDescriptorDecorate> OpDescDecorate;
+	std::map<int, SPIRV_OpLocationDecorate> OpLocationDecorate;
 	std::map<int, SPIRV_OpVariable> OpVariable;
 	std::map<int, SPIRV_OpType> OpType;
 	std::map<int, int> OpIntConstant;
+
+	int PushConstantVariableIndex;
 };
 
 class SPIRVImporter
@@ -121,7 +130,7 @@ public:
 	bool LoadSPIRVShader(const std::string& SrcFileName, const std::string& TarFileName);
 
 private:
-	void GetSPIRVShaderParams(std::vector<char>& data);
+	ImportAsset* GetSPIRVShaderParams(std::vector<char>& data);
 	void ProcessInstruction(short op, const std::vector<SPIRVWord>& operands);
 	void ProcessEntryPoint(const std::vector<SPIRVWord>& operands);
 	void ProcessOpName(const std::vector<SPIRVWord>& operands);
@@ -133,17 +142,21 @@ private:
 	void ProcessOpMemberDecorate(const std::vector<SPIRVWord>& operands);
 	std::string LoadString(const std::vector<SPIRVWord>& operands, int& index);
 	int GetMemberOffset(int structId, int member);
+	std::string GetMemberName(int structId, int member);
+	std::string GetFormatName(int typeId);
+	void ExportAllBlock(ImportAsset* ImportAsset);
+	void ExportAllInput(ImportAsset* ImportAsset);
+	void ExportAllPushConstant(ImportAsset* ImportAsset);
+	void ExportStructShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string& namePrefix);
+	void ExportArrayShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string& namePrefix);
+	void ExportValueShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string& namePrefix);
+	void ExportImageShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string& namePrefix);
 
-	void CalcAllTypeOffset();
-	void CalcAllBlockSize();
-
-	void ExportShaderParameters();
 	int ArrayPaddingSize(int srcSize)
 	{
 		return (srcSize + 15) / 16 * 16;
 	}
 
 private:
-	SPIRVGlobalState mSPIRVGlobalState;
-	
+	SPIRVGlobalState mSPIRVGlobalState;	
 };

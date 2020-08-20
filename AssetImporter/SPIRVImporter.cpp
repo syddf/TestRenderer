@@ -8,6 +8,25 @@ SPIRVWord LoadSPIRVWord(char*& pData)
 	return word;
 }
 
+static std::map<SPIRV_TypeEnum, std::string> sValueTypeNameMap =
+{
+	{SPIRV_TypeEnum::TE_Int, "int"},
+	{SPIRV_TypeEnum::TE_Float, "float"},
+	{SPIRV_TypeEnum::TE_Matrix, "matrix"},
+	{SPIRV_TypeEnum::TE_Bool, "int"}
+};
+
+static std::map<int, std::string> sDimensionNameMap = 
+{
+	{0, "1D"},
+	{1, "2D"},
+	{2, "3D"},
+	{3, "Cube"},
+	{4, "Rect"},
+	{5, "Buffer"},
+	{6, "SubpassData"}
+};
+
 SPIRVImporter::SPIRVImporter()
 {
 }
@@ -25,7 +44,7 @@ bool SPIRVImporter::LoadSPIRVShader(const std::string& SrcFileName, const std::s
 	return true;
 }
 
-void SPIRVImporter::GetSPIRVShaderParams(std::vector<char>& data)
+ImportAsset* SPIRVImporter::GetSPIRVShaderParams(std::vector<char>& data)
 {
 	int totalWordCount = data.size() / 4;
 	char* pData = data.data();
@@ -58,6 +77,11 @@ void SPIRVImporter::GetSPIRVShaderParams(std::vector<char>& data)
 		ProcessInstruction(instructionWordOp, operandVec);
 		curWordCount += instructionWordCount;
 	}
+	ImportAsset* asset = new ImportSPIRVShaderData(mSPIRVGlobalState.EntryPoint.shaderType);
+    ExportAllBlock(asset);
+	ExportAllInput(asset);
+	ExportAllPushConstant(asset);
+	return asset;
 }
 
 void SPIRVImporter::ProcessInstruction(short op, const std::vector<SPIRVWord>& operands)
@@ -163,14 +187,26 @@ void SPIRVImporter::ProcessOpDecorate(const std::vector<SPIRVWord>& operands)
 		bindDeco.bindIndex = operands[2].wordValue;
 		mSPIRVGlobalState.OpBindingDecorate[id] = bindDeco;
 	}
+	else if (decoration == 30)
+	{
+		SPIRV_OpLocationDecorate opLocationDeco;
+		opLocationDeco.id = id;
+		opLocationDeco.location = operands[2].wordValue;
+		mSPIRVGlobalState.OpLocationDecorate[id] = opLocationDeco;
+	}
 }
 
 void SPIRVImporter::ProcessOpVariable(const std::vector<SPIRVWord>& operands)
 {
+	const int pushconstantStorage = 9;
 	SPIRV_OpVariable opVariable;
 	opVariable.id = operands[1].wordValue;
 	opVariable.typePointerId = operands[0].wordValue;
 	opVariable.variableStorage = operands[2].wordValue;
+	if (opVariable.variableStorage == pushconstantStorage)
+	{
+		mSPIRVGlobalState.PushConstantVariableIndex = operands[1].wordValue;
+	}
 	mSPIRVGlobalState.OpVariable[opVariable.id] = opVariable;
 }
 
@@ -245,7 +281,7 @@ void SPIRVImporter::ProcessOpType(short op, const std::vector<SPIRVWord>& operan
 		int id = operands[0].wordValue;
 		opType.parentType = operands[1].wordValue;
 		opType.width = mSPIRVGlobalState.OpIntConstant[operands[2].wordValue];
-		opType.typeSize = opType.width + ArrayPaddingSize(mSPIRVGlobalState.OpType[opType.parentType].typeSize);
+		opType.typeSize = opType.width * ArrayPaddingSize(mSPIRVGlobalState.OpType[opType.parentType].typeSize);
 		opType.typeEnum = SPIRV_TypeEnum::TE_Array;
 		mSPIRVGlobalState.OpType[id] = opType;
 	}
@@ -287,10 +323,10 @@ std::string SPIRVImporter::LoadString(const std::vector<SPIRVWord>& operands, in
 	int i = index;
 	for (; i < operands.size() && operands[i].wordValue != 0; i++)
 	{
-		res.push_back(operands[i].bytes[0]);
-		res.push_back(operands[i].bytes[1]);
-		res.push_back(operands[i].bytes[2]);
-		res.push_back(operands[i].bytes[3]);
+		if(operands[i].bytes[0] != '\0') res.push_back(operands[i].bytes[0]);
+		if(operands[i].bytes[1] != '\0') res.push_back(operands[i].bytes[1]);
+		if(operands[i].bytes[2] != '\0') res.push_back(operands[i].bytes[2]);
+		if(operands[i].bytes[3] != '\0') res.push_back(operands[i].bytes[3]);
 	}
 	index = i;
 	return res;
@@ -305,18 +341,188 @@ int SPIRVImporter::GetMemberOffset(int structId, int member)
 	return 0;
 }
 
-void SPIRVImporter::CalcAllTypeOffset()
+std::string SPIRVImporter::GetMemberName(int structId, int member)
 {
+	for (auto mo : mSPIRVGlobalState.OpMemberNames)
+	{
+		if (mo.localIndex == member && mo.parentId == structId) return mo.name;
+	}
+	return "";
 }
 
-void SPIRVImporter::CalcAllBlockSize()
+std::string SPIRVImporter::GetFormatName(int typeId)
 {
-	for (auto iter = mSPIRVGlobalState.OpType.begin(); iter != mSPIRVGlobalState.OpType.end(); iter++)
+	auto valueType = mSPIRVGlobalState.OpType[typeId];
+	std::string typeName = "";
+	if (valueType.typeEnum == SPIRV_TypeEnum::TE_Vector)
 	{
+		auto parentType = mSPIRVGlobalState.OpType[valueType.parentType];
+		typeName = sValueTypeNameMap[parentType.typeEnum] + "+" + std::to_string(valueType.width);
+	}
+	else
+	{
+		typeName = sValueTypeNameMap[valueType.typeEnum];
+	}
+	return typeName;
+}
 
+void SPIRVImporter::ExportAllBlock(ImportAsset* ImportAsset)
+{
+	ImportSPIRVShaderData* shaderData = static_cast<ImportSPIRVShaderData*>(ImportAsset);
+	for (auto iter : mSPIRVGlobalState.OpDescDecorate)
+	{
+		int blockId = iter.second.id;
+		int set = iter.second.descIndex;
+		int binding = mSPIRVGlobalState.OpBindingDecorate[blockId].bindIndex;
+		ShaderBlockInfo newBlockInfo = {};
+		newBlockInfo.Set = set;
+		newBlockInfo.Binding = binding;
+		int typePointerId = mSPIRVGlobalState.OpVariable[blockId].typePointerId;
+		int typeId = mSPIRVGlobalState.OpTypePointer[typePointerId].typeId;
+		if (mSPIRVGlobalState.OpType[typeId].typeEnum == SPIRV_TypeEnum::TE_Struct)
+		{
+			newBlockInfo.BlockSize = mSPIRVGlobalState.OpType[typeId].typeSize;
+			newBlockInfo.StructBuffer = true;
+			std::string prefix = "";
+			ExportStructShaderParameters(typeId, 0, newBlockInfo.ParamsVec, prefix);
+		}
+		else if (mSPIRVGlobalState.OpType[typeId].typeEnum == SPIRV_TypeEnum::TE_SamplerImage)
+		{
+			newBlockInfo.StructBuffer = false;
+			int imageTypeId = mSPIRVGlobalState.OpType[typeId].parentType;
+			std::string blockName = mSPIRVGlobalState.OpNames[blockId].name;
+			ExportImageShaderParameters(imageTypeId, 0, newBlockInfo.ParamsVec, blockName);
+		}
+		else if (mSPIRVGlobalState.OpType[typeId].typeEnum == SPIRV_TypeEnum::TE_Array)
+		{
+			auto parentType = mSPIRVGlobalState.OpType[mSPIRVGlobalState.OpType[typeId].parentType];
+			if (parentType.typeEnum != SPIRV_TypeEnum::TE_SamplerImage)
+			{
+				throw "Not allowed array format.";
+			}
+			newBlockInfo.StructBuffer = false;
+			std::string blockName = mSPIRVGlobalState.OpNames[blockId].name;
+			ExportArrayShaderParameters(typeId, 0, newBlockInfo.ParamsVec, blockName);
+		}
+		shaderData->ShaderParamsBlockInfo.push_back(newBlockInfo);
 	}
 }
 
-void SPIRVImporter::ExportShaderParameters()
+void SPIRVImporter::ExportAllInput(ImportAsset * ImportAsset)
 {
+	const int inputStorage = 1;
+	ImportSPIRVShaderData* shaderData = static_cast<ImportSPIRVShaderData*>(ImportAsset);
+	for (auto iter : mSPIRVGlobalState.OpLocationDecorate)
+	{
+		if (mSPIRVGlobalState.OpVariable[iter.first].variableStorage == inputStorage)
+		{
+			ShaderInputInfo inputInfo = {};
+			inputInfo.location = iter.second.location;
+			inputInfo.name = mSPIRVGlobalState.OpNames[iter.first].name;
+			int typeId = mSPIRVGlobalState.OpTypePointer[mSPIRVGlobalState.OpVariable[iter.first].typePointerId].typeId;
+			inputInfo.format = GetFormatName(typeId);
+			shaderData->ShaderInputInfo.push_back(inputInfo);
+		}
+	}
+}
+
+void SPIRVImporter::ExportAllPushConstant(ImportAsset * ImportAsset)
+{
+	ImportSPIRVShaderData* shaderData = static_cast<ImportSPIRVShaderData*>(ImportAsset);
+	int pushConstantTypePointerId = mSPIRVGlobalState.OpVariable[mSPIRVGlobalState.PushConstantVariableIndex].typePointerId;
+	int pushConstantTypeId = mSPIRVGlobalState.OpTypePointer[pushConstantTypePointerId].typeId;
+	auto pushConstantType = mSPIRVGlobalState.OpType[pushConstantTypeId];
+	for (int i = 0; i < pushConstantType.memberTypeId.size(); i++)
+	{
+		ShaderPushConstantInfo shaderPushConstantInfo = {};
+		shaderPushConstantInfo.format = GetFormatName(pushConstantType.memberTypeId[i]);
+		shaderPushConstantInfo.name = GetMemberName(pushConstantTypeId, i);
+		shaderPushConstantInfo.offset = GetMemberOffset(pushConstantTypeId, i);
+		shaderData->ShaderPushConstantInfo.push_back(shaderPushConstantInfo);
+	}
+}
+
+void SPIRVImporter::ExportStructShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string& namePrefix)
+{
+	auto memberVec = mSPIRVGlobalState.OpType[structId].memberTypeId;
+	for (int i = 0; i < memberVec.size(); i ++)
+	{
+		int memberId = memberVec[i];
+		auto memberOpType = mSPIRVGlobalState.OpType[memberId];
+		int baseOffset = offset + GetMemberOffset(structId, i);
+		if (memberOpType.typeEnum == SPIRV_TypeEnum::TE_Struct)
+		{
+			std::string name = namePrefix + GetMemberName(structId, i) + ".";
+			ExportStructShaderParameters(memberId, baseOffset, paramsVec, name);
+		}
+		else if (memberOpType.typeEnum == SPIRV_TypeEnum::TE_Array)
+		{
+			std::string name = namePrefix + GetMemberName(structId, i);
+			ExportArrayShaderParameters(memberId, baseOffset, paramsVec, name);
+		}
+		else
+		{
+			std::string name = namePrefix + GetMemberName(structId, i);
+			ExportValueShaderParameters(memberId, baseOffset, paramsVec, name);
+		}
+	}
+}
+
+void SPIRVImporter::ExportArrayShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string & namePrefix)
+{
+	int parentId = mSPIRVGlobalState.OpType[structId].parentType;
+	auto parentType = mSPIRVGlobalState.OpType[mSPIRVGlobalState.OpType[structId].parentType];
+	int paddingElementSize = ArrayPaddingSize(parentType.typeSize);
+	int baseOffset = offset;
+	if (parentType.typeEnum == SPIRV_TypeEnum::TE_Struct)
+	{
+		for (int i = 0; i < mSPIRVGlobalState.OpType[structId].width; i++)
+		{
+			std::string arraySuffix = std::string("[") + std::to_string(i) + std::string("]");
+			std::string name = namePrefix + arraySuffix + ".";
+			ExportStructShaderParameters(parentId, baseOffset, paramsVec, name);
+			baseOffset += paddingElementSize;
+		}
+	}
+	else if (parentType.typeEnum == SPIRV_TypeEnum::TE_SamplerImage)
+	{
+		for (int i = 0; i < mSPIRVGlobalState.OpType[structId].width; i++)
+		{
+			std::string arraySuffix = std::string("[") + std::to_string(i) + std::string("]");
+			std::string name = namePrefix + arraySuffix;
+			int imageTypeId = mSPIRVGlobalState.OpType[parentId].parentType;
+			ExportImageShaderParameters(imageTypeId, baseOffset, paramsVec, name);
+		}
+	}
+	else 
+	{
+		for (int i = 0; i < mSPIRVGlobalState.OpType[structId].width; i++)
+		{
+			std::string arraySuffix = std::string("[") + std::to_string(i) + std::string("]");
+			std::string name = namePrefix + arraySuffix;
+			ExportValueShaderParameters(parentId, baseOffset, paramsVec, name);
+			baseOffset += paddingElementSize;
+		}
+	}
+}
+
+void SPIRVImporter::ExportValueShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string & namePrefix)
+{
+	auto valueType = mSPIRVGlobalState.OpType[structId];
+	ShaderParameter shaderParameter;
+	shaderParameter.Offset = offset;
+	shaderParameter.Name = namePrefix;
+	shaderParameter.Count = valueType.typeSize;
+	shaderParameter.Format = GetFormatName(structId);
+	paramsVec.push_back(shaderParameter);
+}
+
+void SPIRVImporter::ExportImageShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string & namePrefix)
+{
+	auto imageType = mSPIRVGlobalState.OpType[structId];
+	auto imageFormatType = mSPIRVGlobalState.OpType[imageType.sampleTypeId];
+	ShaderParameter newParameter;
+	newParameter.Format = sValueTypeNameMap[imageFormatType.typeEnum] + "+" + sDimensionNameMap[imageType.dimension];
+	newParameter.Name = namePrefix;
+	paramsVec.push_back(newParameter);
 }
