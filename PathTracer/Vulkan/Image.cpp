@@ -16,6 +16,7 @@ VulkanImage::~VulkanImage()
 {
 	vkFreeMemory(gVulkanDevice, mImageMemory, nullptr);
 	vkDestroyImage(gVulkanDevice, mImage, nullptr);
+	vkDestroySampler(gVulkanDevice, mSampler, nullptr);
 }
 
 void VulkanImage::CreateImage(ImageDesc desc)
@@ -87,6 +88,26 @@ void VulkanImage::CreateImage(ImageDesc desc)
 	viewDesc.MipLevelCount = desc.MipLevels;
 	viewDesc.ImageHandleAddr = reinterpret_cast<char*>(&mImage);
 	mImageView = std::make_shared<VulkanImageView>(viewDesc);
+
+	VkSamplerCreateInfo samplerInfo = {};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_LINEAR;
+	samplerInfo.minFilter = VK_FILTER_LINEAR;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.anisotropyEnable = VK_FALSE;
+	samplerInfo.maxAnisotropy = 16.0f;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.mipLodBias = 0.0f;
+	samplerInfo.minLod = 0.0f;
+	samplerInfo.maxLod = 0.0f;
+
+	VKFUNC(vkCreateSampler(gVulkanDevice, &samplerInfo, nullptr, &mSampler), "Failed To Create Sampler");
 }
 
 void VulkanImage::TranslateImageLayout(VkImageLayout newLayout, VkImageAspectFlags aspect, UInt32 mipLevels)
@@ -221,4 +242,9 @@ char* VulkanImage::GetGPUImageHandleAddress()
 char * VulkanImage::GetGPUImageViewHandleAddress()
 {
 	return mImageView->GetGPUImageViewHandleAddress();
+}
+
+char * VulkanImage::GetSamplerHandleAddress()
+{
+	return reinterpret_cast<char*>(&mSampler);
 }

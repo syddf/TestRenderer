@@ -55,10 +55,25 @@ void VulkanMaterial::MergeShaderParams()
 						else if (dimensionStr == "3D") return TextureDimension::Texture3D;
 						else if (dimensionStr == "Cube") return TextureDimension::TextureCube;
 					};
+
+					auto GetTextureArrayIndex = [](std::string& textureName)->int
+					{
+						auto numberStart = textureName.find('[');
+						auto numberEnd = textureName.find(']');
+						int numberCount = numberEnd - numberStart;
+						std::string numberInd = textureName.substr(numberStart + 1, numberCount);
+						int res = 0;
+						for (int i = 0; i < numberCount; i++)
+							res = res * 10 + numberInd[i] - '0';
+						return res;
+					};
 					ImageParam imageParam;
+					imageParam.Set = block.Set;
+					imageParam.Binding = block.Binding;
 					auto dimensionStrPos = param.Format.find("+");
 					auto dimensionStr = param.Format.substr(dimensionStrPos + 1);
 					imageParam.ImageDimension = GetTextureDimension(dimensionStr);
+					imageParam.ArrayIndex = GetTextureArrayIndex(param.Name);
 					mParams.ImageParams[param.Name] = imageParam;
 				}
 			}
@@ -221,5 +236,25 @@ void VulkanMaterial::UpdateMaterialParams(int frameIndex)
 		}
 	}
 
+	for (auto imageParam : mParams.ImageParams)
+	{
+		IImage::ImagePtr image = ResourceCreator::CreateImageFromFile(imageParam.second.Value);
+		VkDescriptorImageInfo imageInfo = {};
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = *((VkImageView*)image->GetGPUImageViewHandleAddress());
+		imageInfo.sampler = *((VkSampler*)image->GetSamplerHandleAddress());
+
+		VkWriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = mVKDescSetVec[imageParam.second.Set + startIndex];
+		descriptorWrite.dstBinding = imageParam.second.Binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pBufferInfo = nullptr;
+		descriptorWrite.pImageInfo = &imageInfo;
+		descriptorWrite.pTexelBufferView = nullptr;
+		descriptorSetWrite.push_back(descriptorWrite);
+	}
 	vkUpdateDescriptorSets(gVulkanDevice, descriptorSetWrite.size(), descriptorSetWrite.data(), 0, nullptr);
 }

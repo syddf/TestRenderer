@@ -13,10 +13,12 @@ public:
 	void GenerateMipMap(UInt32 Width, UInt32 Height, UInt32 MipLevels);
 	char* GetGPUImageHandleAddress();
 	char* GetGPUImageViewHandleAddress();
+	char* GetSamplerHandleAddress();
 
 private:
 	VkImage mImage;
 	VkDeviceMemory mImageMemory;
+	VkSampler mSampler;
 	VkImageLayout mImageLayout;
 	IImageView::ImageViewPtr mImageView;
 };

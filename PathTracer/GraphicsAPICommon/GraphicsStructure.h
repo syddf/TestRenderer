@@ -153,6 +153,9 @@ struct ConstantBufferParam
 struct ImageParam
 {
 	TextureDimension ImageDimension;
+	int Set;
+	int Binding;
+	int ArrayIndex;
 	std::string Value;
 };
 

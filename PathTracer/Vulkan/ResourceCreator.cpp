@@ -2,6 +2,7 @@
 #include "Image.h"
 
 std::map<std::string, VulkanShader::VulkanShaderPtr> shaderMap;
+std::map<std::string, IImage::ImagePtr> imageMap;
 
 VulkanShaderType GetVulkanShaderType(ShaderTypeEnum importShaderType)
 {
@@ -35,6 +36,10 @@ IBuffer::BufferPtr ResourceCreator::CreateUniformBuffer(UInt32 bufferSize)
 
 IImage::ImagePtr ResourceCreator::CreateImageFromFile(std::string imageFile)
 {
+	if (imageMap.find(imageFile) != imageMap.end())
+	{
+		return imageMap[imageFile];
+	}
 	ImportTextureData* importTexturePtr = GetAsset<ImportTextureData>(imageFile);
 	auto importTextureData = *importTexturePtr;
 
@@ -55,6 +60,8 @@ IImage::ImagePtr ResourceCreator::CreateImageFromFile(std::string imageFile)
 	}
 	desc.Usage = TextureUsageBits::TU_SHADER_RESOURCE | TextureUsageBits::TU_TRANSFER_SRC | TextureUsageBits::TU_TRANSFER_DST;
 	IImage::ImagePtr imgPtr = std::make_shared<VulkanImage>(desc);
+
+	imageMap[imageFile] = imgPtr;
 	return imgPtr;
 }
 
@@ -118,5 +125,6 @@ TextureDimension ResourceCreator::GetTextureDimension(TextureTypeEnum texType)
 void ResourceCreator::DestroyCachingResource()
 {
 	shaderMap.clear();
+	imageMap.clear();
 }
 

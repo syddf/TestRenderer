@@ -36,6 +36,7 @@ public:
 	virtual void CreateImage(ImageDesc desc) = 0;
 	virtual char* GetGPUImageHandleAddress() = 0;
 	virtual char* GetGPUImageViewHandleAddress() = 0;
+	virtual char* GetSamplerHandleAddress() = 0;
 };
 
 class IImageView
