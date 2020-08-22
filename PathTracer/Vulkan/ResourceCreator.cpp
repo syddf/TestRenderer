@@ -1,6 +1,17 @@
 #include "ResourceCreator.h"
 #include "Image.h"
 
+std::map<std::string, VulkanShader::VulkanShaderPtr> shaderMap;
+
+VulkanShaderType GetVulkanShaderType(ShaderTypeEnum importShaderType)
+{
+	if (importShaderType == ShaderTypeEnum::ImportVertexShader)
+		return VulkanShaderType::VertexShader;
+	else if (importShaderType == ShaderTypeEnum::ImportFragmentShader)
+		return VulkanShaderType::FragmentShader;
+	return VulkanShaderType::ComputeShader;
+}
+
 IBuffer::BufferPtr ResourceCreator::CreateStagingBuffer(char* bufferData, UInt32 bufferSize)
 {
 	BufferDesc desc = {};
@@ -12,10 +23,20 @@ IBuffer::BufferPtr ResourceCreator::CreateStagingBuffer(char* bufferData, UInt32
 	return stagingBuffer;
 }
 
+IBuffer::BufferPtr ResourceCreator::CreateUniformBuffer(UInt32 bufferSize)
+{
+	BufferDesc desc = {};
+	desc.BufferData = nullptr;
+	desc.Size = bufferSize;
+	desc.Usage = BufferUsageBits::BU_UNIFORM_BUFFER;
+	IBuffer::BufferPtr uniformBuffer = std::make_shared<VulkanBuffer>(desc);
+	return uniformBuffer;
+}
+
 IImage::ImagePtr ResourceCreator::CreateImageFromFile(std::string imageFile)
 {
-	ImportTextureData importTextureData;
-	importTextureData.Deserialize(imageFile);
+	ImportTextureData* importTexturePtr = GetAsset<ImportTextureData>(imageFile);
+	auto importTextureData = *importTexturePtr;
 
 	UInt32 mipmapCount = static_cast<UInt32>(std::floor(std::log2(std::max(importTextureData.TextureWidth, importTextureData.TextureHeight) + 1)));
 
@@ -59,6 +80,30 @@ IBuffer::BufferPtr ResourceCreator::CreateIndexBuffer(char * bufferData, UInt32 
 	return indexBuffer;
 }
 
+VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string vertexShader, std::string fragmentShader)
+{
+	VulkanMaterialShader materialShader = {};
+	materialShader.VertexShader = CreateShaderFromFile(vertexShader);
+	materialShader.FragmentShader = CreateShaderFromFile(fragmentShader);
+	return std::make_shared<VulkanMaterial>(materialShader);
+}
+
+VulkanShader::VulkanShaderPtr ResourceCreator::CreateShaderFromFile(std::string shaderFile)
+{
+	if (shaderMap.find(shaderFile) == shaderMap.end())
+	{
+		ImportSPIRVShaderData* shaderData = new ImportSPIRVShaderData();
+		shaderData->Deserialize(shaderFile);
+		VulkanShaderParams params;
+		params.BlockVec = shaderData->ShaderParamsBlockInfo;
+		params.InputVec = shaderData->ShaderInputInfo;
+		params.PushConstantVec = shaderData->ShaderPushConstantInfo;
+		VulkanShader::VulkanShaderPtr shader = std::make_shared<VulkanShader>(shaderData->ShaderData, params, GetVulkanShaderType(shaderData->ShaderType));
+		shaderMap[shaderFile] = shader;
+	}
+	return shaderMap[shaderFile];
+}
+
 TextureDimension ResourceCreator::GetTextureDimension(TextureTypeEnum texType)
 {
 	if (texType == TextureTypeEnum::ImportTexture2D)
@@ -69,3 +114,9 @@ TextureDimension ResourceCreator::GetTextureDimension(TextureTypeEnum texType)
 		return TextureDimension::TextureCube;
 	return TextureDimension::None;
 }
+
+void ResourceCreator::DestroyCachingResource()
+{
+	shaderMap.clear();
+}
+

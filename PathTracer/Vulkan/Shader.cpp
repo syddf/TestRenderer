@@ -3,10 +3,11 @@
 
 extern VkDevice gVulkanDevice;
 
-VulkanShader::VulkanShader(std::string shaderFile, VulkanShaderType shaderType)
+VulkanShader::VulkanShader(std::vector<char>& buffer, VulkanShaderParams& params, VulkanShaderType shaderType)
 {
-	LoadShaderFromFile(shaderFile);
+	CreateVulkanShader(buffer);
 	mShaderType = shaderType;
+	mVulkanShaderParams = params;
 }
 
 VulkanShader::~VulkanShader()
@@ -14,12 +15,8 @@ VulkanShader::~VulkanShader()
 	vkDestroyShaderModule(gVulkanDevice, mShaderModule, nullptr);
 }
 
-void VulkanShader::LoadShaderFromFile(const std::string & shaderFile)
+void VulkanShader::CreateVulkanShader(std::vector<char>& buffer)
 {
-	FileHelper helper(shaderFile, FileHelper::FileMode::FileRead);
-	std::vector<char> buffer;
-	helper.ReadAllBinaryFile(buffer);
-
 	VkShaderModuleCreateInfo shaderModuleInfo = {};
 	shaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(buffer.data());

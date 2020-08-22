@@ -54,6 +54,15 @@ public:
 	virtual ~IBuffer() {};
 	virtual void CreateBuffer(BufferDesc desc) = 0;
 	virtual char* GetGPUBufferHandleAddress() = 0;
+	virtual int GetBufferSize() = 0;
+};
+
+class IShader
+{
+public:
+	using ShaderPtr = std::shared_ptr<IShader>;
+	virtual ~IShader() {};
+	virtual char* GetGPUShaderHandleAddress() = 0;
 };
 
 class IRenderingPipelineNode

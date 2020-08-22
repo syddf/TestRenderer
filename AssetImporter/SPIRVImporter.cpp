@@ -13,7 +13,8 @@ static std::map<SPIRV_TypeEnum, std::string> sValueTypeNameMap =
 	{SPIRV_TypeEnum::TE_Int, "int"},
 	{SPIRV_TypeEnum::TE_Float, "float"},
 	{SPIRV_TypeEnum::TE_Matrix, "matrix"},
-	{SPIRV_TypeEnum::TE_Bool, "int"}
+	{SPIRV_TypeEnum::TE_Bool, "int"},
+	{SPIRV_TypeEnum::TE_SamplerImage, "texture"}
 };
 
 static std::map<int, std::string> sDimensionNameMap = 
@@ -40,7 +41,9 @@ bool SPIRVImporter::LoadSPIRVShader(const std::string& SrcFileName, const std::s
 	FileHelper fileHelper(SrcFileName, FileHelper::FileMode::FileRead);
 	std::vector<char> buffer;
 	fileHelper.ReadAllBinaryFile(buffer);
-	GetSPIRVShaderParams(buffer);
+	auto asset = GetSPIRVShaderParams(buffer);
+	static_cast<ImportSPIRVShaderData*>(asset)->ShaderData = buffer;
+	asset->Serialize(TarFileName);
 	return true;
 }
 
@@ -77,7 +80,8 @@ ImportAsset* SPIRVImporter::GetSPIRVShaderParams(std::vector<char>& data)
 		ProcessInstruction(instructionWordOp, operandVec);
 		curWordCount += instructionWordCount;
 	}
-	ImportAsset* asset = new ImportSPIRVShaderData(mSPIRVGlobalState.EntryPoint.shaderType);
+	ImportAsset* asset = new ImportSPIRVShaderData();
+	static_cast<ImportSPIRVShaderData*>(asset)->ShaderType = mSPIRVGlobalState.EntryPoint.shaderType;
     ExportAllBlock(asset);
 	ExportAllInput(asset);
 	ExportAllPushConstant(asset);
@@ -522,7 +526,7 @@ void SPIRVImporter::ExportImageShaderParameters(int structId, int offset, std::v
 	auto imageType = mSPIRVGlobalState.OpType[structId];
 	auto imageFormatType = mSPIRVGlobalState.OpType[imageType.sampleTypeId];
 	ShaderParameter newParameter;
-	newParameter.Format = sValueTypeNameMap[imageFormatType.typeEnum] + "+" + sDimensionNameMap[imageType.dimension];
+	newParameter.Format = "Texture+" + sDimensionNameMap[imageType.dimension];
 	newParameter.Name = namePrefix;
 	paramsVec.push_back(newParameter);
 }

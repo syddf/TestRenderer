@@ -140,3 +140,28 @@ struct RenderingPipelineNodeDesc
 	bool AttachToWindowNode;
 	bool AffectOtherNode;
 };
+
+template<typename T>
+struct ConstantBufferParam
+{
+	int Set;
+	int Binding;
+	int Offset;
+	T Value;
+};
+
+struct ImageParam
+{
+	TextureDimension ImageDimension;
+	std::string Value;
+};
+
+struct MaterialParams
+{
+	std::map<std::string, ConstantBufferParam<Matrix>> MatrixParams;
+	std::map<std::string, ConstantBufferParam<Vec4>> Vec4Params;
+	std::map<std::string, ConstantBufferParam<Vec3>> Vec3Params;
+	std::map<std::string, ConstantBufferParam<float>> FloatParams;
+	std::map<std::string, ConstantBufferParam<int>> IntParams;
+	std::map<std::string, ImageParam> ImageParams;
+};

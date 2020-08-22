@@ -2,6 +2,7 @@
 
 extern UInt32 gScreenWidth;
 extern UInt32 gScreenHeight;
+UInt32 gSwapChainImageCount = 0;
 
 VulkanSwapChain::VulkanSwapChain(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkDevice device, UInt32 graphicsFamily, UInt32 presentFamily)
 {
@@ -75,6 +76,7 @@ void VulkanSwapChain::InitializeSwapChain(VkPhysicalDevice physicalDevice, VkSur
 	}
 
 	uint32_t imageCount = mSwapChainImageCount;
+	gSwapChainImageCount = mSwapChainImageCount;
 
 	VkSwapchainCreateInfoKHR createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;

@@ -12,6 +12,7 @@ typedef glm::vec4 Vec4;
 typedef glm::vec3 Vec3;
 typedef glm::vec3 Point;
 typedef glm::vec2 Vec2;
+typedef glm::mat4 Matrix;
 
 typedef unsigned int UInt32;
 typedef unsigned char UInt8;

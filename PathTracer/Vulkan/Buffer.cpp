@@ -44,6 +44,8 @@ void VulkanBuffer::CreateBuffer(BufferDesc desc)
 			vkUnmapMemory(gVulkanDevice, mBufferMemory);
 		}
 	}
+
+	mBufferSize = desc.Size;
 }
 
 char* VulkanBuffer::GetGPUBufferHandleAddress()

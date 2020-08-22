@@ -33,7 +33,9 @@ int main()
 			static_cast<VulkanWindow*>(window)->GetPresentFamily()
 		);
 		ResourceCreator::CreateImageFromFile("./../../Asset/Dst/red.data");
+		ResourceCreator::CreateMaterial("D:\\Compile\\shaderVert.data", "D:\\Compile\\shaderFrag.data");
 		window->MainLoop();
+		ResourceCreator::DestroyCachingResource();
 		delete swapChain;
 	}
 	delete window;

@@ -2,21 +2,46 @@
 
 #include "Prefix.h"
 
+template <typename T, typename = void>
+struct HasCustomSerialization : std::false_type {};
+
+template <typename T>
+struct HasCustomSerialization<T, std::void_t<decltype(std::declval<T>().Serialize(std::declval<std::fstream&>()))>> : std::true_type {};
+
+template<typename T>
+static constexpr bool HasCustomSerializationValue = HasCustomSerialization<T>::value;
+
+
 template<typename T> struct SerializeHelper
 {
 	void operator()(std::fstream& FileStream, const T& Object)
 	{
-		FileStream.write((char*)(&Object), sizeof(T));
+		if constexpr (HasCustomSerializationValue<T>)
+		{
+			Object.Serialize(FileStream);
+		}
+		else
+		{
+			FileStream.write((char*)(&Object), sizeof(T));
+		}
 	}
 };
 
-template<typename T> struct DeserializeHelper 
+template<typename T> struct DeserializeHelper
 {
 	void operator()(std::fstream& FileStream, T& Object)
 	{
-		FileStream.read((char*)(&Object), sizeof(T));
+		if constexpr (HasCustomSerializationValue<T>)
+		{
+			Object.Deserialize(FileStream);
+		}
+		else
+		{
+			FileStream.read((char*)(&Object), sizeof(T));
+		}
 	}
 };
+
 
 template<typename T>
 struct SerializeHelper<std::vector<T>>
@@ -27,7 +52,7 @@ struct SerializeHelper<std::vector<T>>
 		FileStream.write((char*)(&Count), sizeof(Count));
 		for (size_t i = 0; i < Count; i++)
 		{
-			FileStream.write((char*)(&Object[i]), sizeof(T));
+			SerializeHelper<T>()(FileStream, Object[i]);
 		}
 	}
 };
@@ -42,10 +67,11 @@ struct DeserializeHelper<std::vector<T>>
 		Object.resize(Count);
 		for (size_t i = 0; i < Count; i++)
 		{
-			FileStream.read((char*)(&Object[i]), sizeof(T));
+			DeserializeHelper<T>()(FileStream, Object[i]);
 		}
 	}
 };
+
 
 template<>
 struct SerializeHelper<std::string>
@@ -69,15 +95,6 @@ struct DeserializeHelper<std::string>
 		FileStream.read((char*)(&Object[0]), sizeof(char) * Count);
 	}
 };
-
-template <typename T, typename = void>
-struct HasCustomSerialization : std::false_type {};
-
-template <typename T>
-struct HasCustomSerialization<T, std::void_t<decltype(std::declval<T>().Serialize())>> : std::true_type {};
-
-template<typename T>
-static constexpr bool HasCustomSerializationValue = HasCustomSerialization<T>::value;
 
 class FileHelper
 {
