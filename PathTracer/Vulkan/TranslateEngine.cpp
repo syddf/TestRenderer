@@ -35,3 +35,16 @@ void VulkanTranslateEngine::TranslateBufferToTexture(TranslateBufferToImageDesc 
 	mCommandPool->EndSingleTimeCommandBuffer(commandBuffer);
 }
 
+void VulkanTranslateEngine::TranslateBufferToBuffer(TranslateBufferToBufferDesc desc)
+{
+	VkCommandBuffer commandBuffer = mCommandPool->BeginSingleTimeCommandBuffer(true);
+	VkBuffer srcBuffer = *reinterpret_cast<VkBuffer*>(desc.GPUSrcBufferHandlePtr);
+	VkBuffer dstBuffer = *reinterpret_cast<VkBuffer*>(desc.GPUTarBufferHandlePtr);
+	VkBufferCopy bufferCopy = {};
+	bufferCopy.srcOffset = desc.SrcOffset;
+	bufferCopy.dstOffset = desc.DstOffset;
+	bufferCopy.size = desc.CopySize;
+	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &bufferCopy);
+	mCommandPool->EndSingleTimeCommandBuffer(commandBuffer);
+}
+

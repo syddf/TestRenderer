@@ -21,7 +21,9 @@ struct ImportMeshData
 		Position,
 		Normal,
 		UV0,
-		UV1
+		UV1,
+		UnknownVec3,
+		UnknownVec2
 	};
 
 	void ReserveVertex(UInt32 Count)
@@ -52,29 +54,44 @@ struct ImportMeshData
 };
 
 template<>
-auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::Position>(int index) const 
+inline auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::Position>(int index) const 
 {
+	if (PositionVec.size() <= index) return Vec3(0, 0, 0);
 	return PositionVec[index];
 }
 
 template<>
-auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::Normal>(int index) const 
+inline auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::Normal>(int index) const 
 {
+	if (NormalVec.size() <= index) return Vec3(0, 0, 0);
 	return NormalVec[index];
 }
 
 template<>
-auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::UV0>(int index) const
+inline auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::UV0>(int index) const
 {
+	if (TexCoord0Vec.size() <= index) return Vec2(0, 0);
 	return TexCoord0Vec[index];
 }
 
 template<>
-auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::UV1>(int index) const
+inline auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::UV1>(int index) const
 {
+	if (TexCoord1Vec.size() <= index) return Vec2(0, 0);
 	return TexCoord1Vec[index];
 }
 
+template<>
+inline auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::UnknownVec2>(int index) const
+{
+	return Vec2(0, 0);
+}
+
+template<>
+inline auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::UnknownVec3>(int index) const
+{
+	return Vec3(0, 0, 0);
+}
 
 struct ImportSceneData : public ImportAsset
 {

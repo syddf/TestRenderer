@@ -87,7 +87,7 @@ struct ShaderInputInfo
 		DeserializeHelper<std::string>()(FileStream, name);
 	}
 
-	friend bool operator < (const ShaderInputInfo& i1, const ShaderInputInfo& i2)
+	friend bool operator < (const ShaderInputInfo& i1, const ShaderInputInfo& i2) 
 	{
 		return i1.location < i2.location;
 	}

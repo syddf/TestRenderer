@@ -32,7 +32,7 @@ private:
 	}
 
 public:
-	void UpdateMaterialParams(int frameIndex);
+	void WriteDescSet();
 
 private:
 	MaterialParams mParams;

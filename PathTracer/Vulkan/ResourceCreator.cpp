@@ -3,6 +3,7 @@
 
 std::map<std::string, VulkanShader::VulkanShaderPtr> shaderMap;
 std::map<std::string, IImage::ImagePtr> imageMap;
+std::map<std::string, std::shared_ptr<VulkanMeshData>> meshDataMap;
 
 VulkanShaderType GetVulkanShaderType(ShaderTypeEnum importShaderType)
 {
@@ -36,6 +37,10 @@ IBuffer::BufferPtr ResourceCreator::CreateUniformBuffer(UInt32 bufferSize)
 
 IImage::ImagePtr ResourceCreator::CreateImageFromFile(std::string imageFile)
 {
+	if (imageFile == "")
+	{
+		imageFile = "./../../Asset/Dst/red.data";
+	}
 	if (imageMap.find(imageFile) != imageMap.end())
 	{
 		return imageMap[imageFile];
@@ -95,6 +100,39 @@ VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string vertexSh
 	return std::make_shared<VulkanMaterial>(materialShader);
 }
 
+IMesh::MeshPtr ResourceCreator::CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex)
+{
+	auto meshData = GetAsset<ImportSceneData>(modelDataFile);
+	auto vertexShader = CreateShaderFromFile(vertexShaderFile);
+	auto shaderType = vertexShader->GetShaderType();
+	assert(shaderType == VulkanShaderType::VertexShader);
+	auto& shaderParams = vertexShader->GetShaderParams();
+	std::vector<ImportMeshData::MeshDataChannel> meshChannels;
+	for (auto input : shaderParams.InputVec)
+	{
+		if (input.name == "inPosition")
+			meshChannels.push_back(ImportMeshData::MeshDataChannel::Position);
+		else if (input.name == "inNormal")
+			meshChannels.push_back(ImportMeshData::MeshDataChannel::Normal);
+		else if (input.name == "inTexCoord")
+			meshChannels.push_back(ImportMeshData::MeshDataChannel::UV0);
+		else if (input.name == "inTexCoord2")
+			meshChannels.push_back(ImportMeshData::MeshDataChannel::UV1);
+		else
+		{
+			if (input.format == "float+2")
+				meshChannels.push_back(ImportMeshData::MeshDataChannel::UnknownVec2);
+			else if (input.format == "float+3")
+				meshChannels.push_back(ImportMeshData::MeshDataChannel::UnknownVec3);
+		}
+	}
+	if (meshDataMap.find(modelDataFile) == meshDataMap.end())
+	{
+		meshDataMap[modelDataFile] = std::make_shared<VulkanMeshData>(*meshData);
+	}
+	return meshDataMap[modelDataFile]->ExportVulkanMesh(meshChannels, meshIndex);
+}
+
 VulkanShader::VulkanShaderPtr ResourceCreator::CreateShaderFromFile(std::string shaderFile)
 {
 	if (shaderMap.find(shaderFile) == shaderMap.end())
@@ -126,5 +164,6 @@ void ResourceCreator::DestroyCachingResource()
 {
 	shaderMap.clear();
 	imageMap.clear();
+	meshDataMap.clear();
 }
 

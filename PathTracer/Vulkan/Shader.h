@@ -42,6 +42,8 @@ public:
 	void CreateVulkanShader(std::vector<char>& buffer);
 	VulkanShaderParams GetShaderParams() { return mVulkanShaderParams;  };
 	char* GetGPUShaderHandleAddress() { return reinterpret_cast<char*>(&mShaderModule); };
+	VulkanShaderType GetShaderType() const { return mShaderType; }
+	VkVertexInputBindingDescription GetInputBindingDescription(std::vector<VkVertexInputAttributeDescription>& attributeDescVec);
 
 private:
 	VulkanShaderType mShaderType;

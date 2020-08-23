@@ -1,6 +1,9 @@
 #include "Buffer.h"
+#include "ResourceCreator.h"
+#include "TranslateEngine.h"
 
 extern VkDevice gVulkanDevice;
+extern ITranslationEngine* gTranslateEngine;
 
 VulkanBuffer::VulkanBuffer(BufferDesc desc)
 {
@@ -35,13 +38,24 @@ void VulkanBuffer::CreateBuffer(BufferDesc desc)
 
 	if (desc.BufferData != nullptr)
 	{
-		assert(propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-		//if (propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+		if (propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
 		{
 			void* data;
 			VKFUNC(vkMapMemory(gVulkanDevice, mBufferMemory, 0, desc.Size, 0, &data), "Map Memory Failed.");
 			memcpy(data, desc.BufferData, desc.Size);
 			vkUnmapMemory(gVulkanDevice, mBufferMemory);
+		}
+		else if (propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+		{
+			IBuffer::BufferPtr stagingBuffer = ResourceCreator::CreateStagingBuffer(desc.BufferData, desc.Size);
+			VulkanTranslateEngine* transEngine = dynamic_cast<VulkanTranslateEngine*>(gTranslateEngine);
+			TranslateBufferToBufferDesc transDesc;
+			transDesc.GPUSrcBufferHandlePtr = stagingBuffer->GetGPUBufferHandleAddress();
+			transDesc.GPUTarBufferHandlePtr = GetGPUBufferHandleAddress();
+			transDesc.SrcOffset = 0;
+			transDesc.DstOffset = 0;
+			transDesc.CopySize = desc.Size;
+			transEngine->TranslateBufferToBuffer(transDesc);
 		}
 	}
 

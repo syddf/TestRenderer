@@ -98,6 +98,15 @@ struct TranslateBufferToImageDesc
 	UInt32 SrcBufferOffset;
 };
 
+struct TranslateBufferToBufferDesc
+{
+	char* GPUSrcBufferHandlePtr;
+	char* GPUTarBufferHandlePtr;
+	UInt32 SrcOffset;
+	UInt32 DstOffset;
+	UInt32 CopySize;
+};
+
 struct ImageViewDesc
 {
 	char* ImageHandleAddr;

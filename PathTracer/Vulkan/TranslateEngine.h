@@ -12,6 +12,7 @@ public:
 
 public:
 	void TranslateBufferToTexture(TranslateBufferToImageDesc desc);
+	void TranslateBufferToBuffer(TranslateBufferToBufferDesc desc);
 
 private:
 	VulkanCommandBufferPool::CommandPoolPtr mCommandPool;

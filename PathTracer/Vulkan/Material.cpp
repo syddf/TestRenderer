@@ -9,6 +9,7 @@ VulkanMaterial::VulkanMaterial(VulkanMaterialShader materialShader)
 	CreateVulkanDescLayout();
 	CreateVulkanDescSet();
 	MergeShaderParams();
+	WriteDescSet();
 }
 
 VulkanMaterial::~VulkanMaterial()
@@ -17,6 +18,8 @@ VulkanMaterial::~VulkanMaterial()
 	{
 		vkDestroyDescriptorSetLayout(gVulkanDevice, descLayout, nullptr);
 	}
+	vkFreeDescriptorSets(gVulkanDevice, mDescriptorPool, mVKDescSetVec.size(), mVKDescSetVec.data());
+	vkDestroyDescriptorPool(gVulkanDevice, mDescriptorPool, nullptr);
 }
 
 void VulkanMaterial::MergeShaderParams()
@@ -165,7 +168,7 @@ void VulkanMaterial::CreateVulkanDescSet()
 	poolInfo.maxSets = mVKDescSetLayoutVec.size() * gSwapChainImageCount;
 	poolInfo.poolSizeCount = 2;
 	poolInfo.pPoolSizes = descPoolSize;
-
+	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 	VKFUNC(vkCreateDescriptorPool(gVulkanDevice, &poolInfo, nullptr, &mDescriptorPool), "Create Descriptor Pool Failed.");
 
 	mVKDescSetVec.resize(mVKDescSetLayoutVec.size() * gSwapChainImageCount);
@@ -204,57 +207,60 @@ void VulkanMaterial::CreateUniformBuffers(std::map<int, std::vector<VkDescriptor
 	}
 }
 
-void VulkanMaterial::UpdateMaterialParams(int frameIndex)
+void VulkanMaterial::WriteDescSet()
 {
-	int startIndex = frameIndex * mVKDescSetLayoutVec.size();
-	auto& uniformBufferMap = mMaterialUniformBuffer[frameIndex];
-	std::vector<VkWriteDescriptorSet> descriptorSetWrite;
-	for (auto set : uniformBufferMap)
+	for (int frameIndex = 0; frameIndex < gSwapChainImageCount; frameIndex++)
 	{
-		int setInd = set.first;
-		for (auto binding : set.second)
+		int startIndex = frameIndex * mVKDescSetLayoutVec.size();
+		auto& uniformBufferMap = mMaterialUniformBuffer[frameIndex];
+		std::vector<VkWriteDescriptorSet> descriptorSetWrite;
+		for (auto set : uniformBufferMap)
 		{
-			int bindInd = binding.first;
-			auto& uniformBuffer = binding.second;
-			VkDescriptorBufferInfo descBufferInfo = {};
-			descBufferInfo.buffer = *reinterpret_cast<VkBuffer*>(uniformBuffer->GetGPUBufferHandleAddress());
-			descBufferInfo.offset = 0;
-			descBufferInfo.range = uniformBuffer->GetBufferSize();
+			int setInd = set.first;
+			for (auto binding : set.second)
+			{
+				int bindInd = binding.first;
+				auto& uniformBuffer = binding.second;
+				VkDescriptorBufferInfo descBufferInfo = {};
+				descBufferInfo.buffer = *reinterpret_cast<VkBuffer*>(uniformBuffer->GetGPUBufferHandleAddress());
+				descBufferInfo.offset = 0;
+				descBufferInfo.range = uniformBuffer->GetBufferSize();
+
+				VkWriteDescriptorSet descriptorWrite = {};
+				descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptorWrite.dstSet = mVKDescSetVec[setInd + startIndex];
+				descriptorWrite.dstBinding = bindInd;
+				descriptorWrite.dstArrayElement = 0;
+				descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				descriptorWrite.descriptorCount = 1;
+				descriptorWrite.pBufferInfo = &descBufferInfo;
+				descriptorWrite.pImageInfo = nullptr;
+				descriptorWrite.pTexelBufferView = nullptr;
+
+				descriptorSetWrite.push_back(descriptorWrite);
+			}
+		}
+
+		for (auto imageParam : mParams.ImageParams)
+		{
+			IImage::ImagePtr image = ResourceCreator::CreateImageFromFile(imageParam.second.Value);
+			VkDescriptorImageInfo imageInfo = {};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = *((VkImageView*)image->GetGPUImageViewHandleAddress());
+			imageInfo.sampler = *((VkSampler*)image->GetSamplerHandleAddress());
 
 			VkWriteDescriptorSet descriptorWrite = {};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = mVKDescSetVec[setInd + startIndex];
-			descriptorWrite.dstBinding = bindInd;
+			descriptorWrite.dstSet = mVKDescSetVec[imageParam.second.Set + startIndex];
+			descriptorWrite.dstBinding = imageParam.second.Binding;
 			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pBufferInfo = &descBufferInfo;
-			descriptorWrite.pImageInfo = nullptr;
+			descriptorWrite.pBufferInfo = nullptr;
+			descriptorWrite.pImageInfo = &imageInfo;
 			descriptorWrite.pTexelBufferView = nullptr;
-
 			descriptorSetWrite.push_back(descriptorWrite);
 		}
+		vkUpdateDescriptorSets(gVulkanDevice, descriptorSetWrite.size(), descriptorSetWrite.data(), 0, nullptr);
 	}
-
-	for (auto imageParam : mParams.ImageParams)
-	{
-		IImage::ImagePtr image = ResourceCreator::CreateImageFromFile(imageParam.second.Value);
-		VkDescriptorImageInfo imageInfo = {};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = *((VkImageView*)image->GetGPUImageViewHandleAddress());
-		imageInfo.sampler = *((VkSampler*)image->GetSamplerHandleAddress());
-
-		VkWriteDescriptorSet descriptorWrite = {};
-		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrite.dstSet = mVKDescSetVec[imageParam.second.Set + startIndex];
-		descriptorWrite.dstBinding = imageParam.second.Binding;
-		descriptorWrite.dstArrayElement = 0;
-		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrite.descriptorCount = 1;
-		descriptorWrite.pBufferInfo = nullptr;
-		descriptorWrite.pImageInfo = &imageInfo;
-		descriptorWrite.pTexelBufferView = nullptr;
-		descriptorSetWrite.push_back(descriptorWrite);
-	}
-	vkUpdateDescriptorSets(gVulkanDevice, descriptorSetWrite.size(), descriptorSetWrite.data(), 0, nullptr);
 }

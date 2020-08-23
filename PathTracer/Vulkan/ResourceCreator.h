@@ -6,6 +6,7 @@
 #include "Buffer.h"
 #include "Shader.h"
 #include "Material.h"
+#include "Mesh.h"
 #include "./../../AssetImporter/ImportTextureData.h"
 #include "./../../AssetImporter/ImportSPIRVShaderData.h"
 
@@ -18,6 +19,8 @@ public:
 	static IBuffer::BufferPtr CreateVertexBuffer(char* bufferData, UInt32 bufferSize);
 	static IBuffer::BufferPtr CreateIndexBuffer(char* bufferData, UInt32 bufferSize);
 	static VulkanMaterial::MaterialPtr CreateMaterial(std::string vertexShader, std::string fragmentShader);
+
+	static IMesh::MeshPtr CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex);
 
 	static VulkanShader::VulkanShaderPtr CreateShaderFromFile(std::string shaderFile);
 	static TextureDimension GetTextureDimension(TextureTypeEnum texType);

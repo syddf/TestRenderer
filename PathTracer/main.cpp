@@ -34,6 +34,7 @@ int main()
 		);
 		ResourceCreator::CreateImageFromFile("./../../Asset/Dst/red.data");
 		ResourceCreator::CreateMaterial("D:\\Compile\\shaderVert.data", "D:\\Compile\\shaderFrag.data");
+		ResourceCreator::CreateMeshFromFile("./../../Asset/Dst/Cornell.data", "D:\\Compile\\shaderVert.data", 0);
 		window->MainLoop();
 		ResourceCreator::DestroyCachingResource();
 		delete swapChain;

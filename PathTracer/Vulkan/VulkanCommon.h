@@ -166,10 +166,12 @@ static VkBufferUsageFlags GetVKBufferUsageFlags(BufferUsage usage)
 	if (usage & BufferUsageBits::BU_VERTEX_BUFFER)
 	{
 		res |= GetVKBufferUsageFlagBits(BufferUsageBits::BU_VERTEX_BUFFER);
+		res |= GetVKBufferUsageFlagBits(BufferUsageBits::BU_TRANSFER_DST);
 	}
 	if (usage & BufferUsageBits::BU_INDEX_BUFFER)
 	{
 		res |= GetVKBufferUsageFlagBits(BufferUsageBits::BU_INDEX_BUFFER);
+		res |= GetVKBufferUsageFlagBits(BufferUsageBits::BU_TRANSFER_DST);
 	}
 	if (usage & BufferUsageBits::BU_TRANSFER_SRC)
 	{

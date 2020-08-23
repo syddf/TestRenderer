@@ -2,11 +2,11 @@
 
 #include "./../../Source/Prefix.h"
 
-class ImageViewDesc;
-class RenderingPipelineNodeDesc;
-class ImageDesc;
-class BufferDesc;
-class TranslateBufferToImageDesc;
+struct ImageViewDesc;
+struct RenderingPipelineNodeDesc;
+struct ImageDesc;
+struct BufferDesc;
+struct TranslateBufferToImageDesc;
 class IImageView;
 
 class IDevice
@@ -88,4 +88,16 @@ class ITranslationEngine
 public:
 	virtual ~ITranslationEngine() {};
 	virtual void TranslateBufferToTexture(TranslateBufferToImageDesc desc) = 0;
+};
+
+class IMesh
+{
+public:
+	using MeshPtr = std::shared_ptr<IMesh>;
+	virtual ~IMesh() {};
+	virtual char* GetVertexBufferGPUHandleAddress() = 0;
+	virtual char* GetIndexBufferGPUHandleAddress() = 0;
+	virtual int GetVertexCount() = 0;
+	virtual int GetIndexCount() = 0;
+	virtual int GetIndexBufferDataSize() = 0;
 };
