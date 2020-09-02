@@ -9,6 +9,8 @@ VkDevice gVulkanDevice = VK_NULL_HANDLE;
 VkPhysicalDevice gVulkanPhysicalDevice = VK_NULL_HANDLE;
 ITranslationEngine* gTranslateEngine = nullptr;
 VulkanCommandBufferPool* gGraphicsCommonCommandBufferPool = nullptr;
+VulkanCommandBufferPool* gPipelineGraphicsSecondaryCommandBufferPool = nullptr;
+VulkanCommandBufferPool* gPipelineGraphicsPrimaryCommandBufferPool = nullptr;
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) 
 {
@@ -41,6 +43,7 @@ VulkanDevice::~VulkanDevice()
 {
 	delete gTranslateEngine;
 	delete gGraphicsCommonCommandBufferPool;
+	delete gPipelineGraphicsSecondaryCommandBufferPool;
 
 	vkDestroyDevice(mDevice, nullptr);
 
@@ -272,4 +275,6 @@ void VulkanDevice::InitializeLogicalDevice()
 
 	gTranslateEngine = new VulkanTranslateEngine(mTransferQueueFamily, mTransferQueue);
 	gGraphicsCommonCommandBufferPool = new VulkanCommandBufferPool(mGraphicsQueueFamily, true, false, mGraphicsQueue);
+	gPipelineGraphicsSecondaryCommandBufferPool = new VulkanCommandBufferPool(mGraphicsQueueFamily, false, true, mGraphicsQueue);
+	gPipelineGraphicsPrimaryCommandBufferPool = new VulkanCommandBufferPool(mGraphicsQueueFamily, false, true, mGraphicsQueue);
 }

@@ -1,30 +1,49 @@
 #include "RenderPass.h"
+#include "Material.h"
+#include "CommandBufferPool.h"
+#include "Mesh.h"
 
 extern VkDevice gVulkanDevice;
+extern UInt32 gScreenWidth;
+extern UInt32 gScreenHeight;
+extern VulkanCommandBufferPool* gPipelineGraphicsSecondaryCommandBufferPool;
+extern VulkanCommandBufferPool* gPipelineGraphicsPrimaryCommandBufferPool;
+extern UInt32 gSwapChainImageCount;
 
-VulkanRenderingNode::VulkanRenderingNode(const RenderingPipelineNodeDesc & desc)
+VulkanPipelineNode::VulkanPipelineNode(const RenderingPipelineNodeDesc & desc)
 {
-	mSignalSemaphore = VK_NULL_HANDLE;
+	mSignalSemaphore.resize(gSwapChainImageCount, VK_NULL_HANDLE);
+	mWaitSemaphore.resize(gSwapChainImageCount);
 	GenerateGraphicsNode(desc);
+
+	mCommandBuffer.reserve(gSwapChainImageCount);
+	for (int i = 0; i < gSwapChainImageCount; i++)
+		mCommandBuffer.push_back(gPipelineGraphicsPrimaryCommandBufferPool->AllocateCommandBuffer(true));
+
 }
 
-VulkanRenderingNode::~VulkanRenderingNode()
+VulkanPipelineNode::~VulkanPipelineNode()
 {
-	vkDestroyFramebuffer(gVulkanDevice, mFrameBuffer, nullptr);
+	for(auto frameBuffer : mFrameBuffer)
+		vkDestroyFramebuffer(gVulkanDevice, frameBuffer, nullptr);
 	vkDestroyRenderPass(gVulkanDevice, mVKRenderPass, nullptr);
-	if (mSignalSemaphore != VK_NULL_HANDLE)
+	for (auto signalSemaphore : mSignalSemaphore)
 	{
-		vkDestroySemaphore(gVulkanDevice, mSignalSemaphore, nullptr);
+		if (signalSemaphore != VK_NULL_HANDLE)
+		{
+			vkDestroySemaphore(gVulkanDevice, signalSemaphore, nullptr);
+		}
 	}
 }
 
-void VulkanRenderingNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc & desc)
+void VulkanPipelineNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc & desc)
 {
 	std::vector<VkAttachmentDescription> attachmentDesc;
 	std::vector<VkAttachmentReference> colorAttachmentReference;
 	VkAttachmentReference depthAttachmentReference;
 	attachmentDesc.resize(desc.FrameBufferLayoutDesc.AttachmentDesc.size());
 
+	mColorAttachmentCount = 0;
 	for (size_t i = 0; i < desc.FrameBufferLayoutDesc.AttachmentDesc.size(); i++)
 	{
 		attachmentDesc[i] = {};
@@ -35,13 +54,19 @@ void VulkanRenderingNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc &
 			attachmentDesc[i].storeOp = GetVKStoreOp(desc.FrameBufferLayoutDesc.AttachmentDesc[i].StoreOp);
 			attachmentDesc[i].stencilLoadOp = GetVKLoadOp(AttachmentOperator::AO_DONT_CARE);
 			attachmentDesc[i].stencilStoreOp = GetVKStoreOp(AttachmentOperator::AO_DONT_CARE);
+			VkClearValue clearValue = {};
+			clearValue.color = { 0.0f, 0.0f, 0.0f, 1.0f };
+			mClearValue.push_back(clearValue);
 		}
 		else if(desc.FrameBufferLayoutDesc.AttachmentDesc[i].Usage & TextureUsageBits::TU_DEPTH_STENCIL)
 		{
-			attachmentDesc[i].loadOp = GetVKLoadOp(AttachmentOperator::AO_DONT_CARE);
-			attachmentDesc[i].storeOp = GetVKStoreOp(AttachmentOperator::AO_DONT_CARE);
+			attachmentDesc[i].loadOp = GetVKLoadOp(desc.FrameBufferLayoutDesc.AttachmentDesc[i].LoadOp);
+			attachmentDesc[i].storeOp = GetVKStoreOp(desc.FrameBufferLayoutDesc.AttachmentDesc[i].StoreOp);
 			attachmentDesc[i].stencilLoadOp = GetVKLoadOp(desc.FrameBufferLayoutDesc.AttachmentDesc[i].LoadOp);
 			attachmentDesc[i].stencilStoreOp = GetVKStoreOp(desc.FrameBufferLayoutDesc.AttachmentDesc[i].StoreOp);
+			VkClearValue clearValue = {};
+			clearValue.depthStencil = { 1.0f, 0 };
+			mClearValue.push_back(clearValue);
 		}
 		attachmentDesc[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		if (desc.AttachToWindowNode)
@@ -63,6 +88,7 @@ void VulkanRenderingNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc &
 			colorReference.attachment = i;
 			colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			colorAttachmentReference.push_back(colorReference);
+			mColorAttachmentCount++;
 		}
 		else if (desc.FrameBufferLayoutDesc.AttachmentDesc[i].Usage == TextureUsageBits::TU_DEPTH_STENCIL)
 		{
@@ -98,12 +124,179 @@ void VulkanRenderingNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc &
 	frameBufferInfo.pAttachments = attachmentView.data();
 	frameBufferInfo.attachmentCount = attachmentView.size();
 	frameBufferInfo.layers = 1;
-	VKFUNC(vkCreateFramebuffer(gVulkanDevice, &frameBufferInfo, nullptr, &mFrameBuffer), "Create Frame Buffer Failed.");
+	for(int i = 0; i < gSwapChainImageCount; i ++)
+		VKFUNC(vkCreateFramebuffer(gVulkanDevice, &frameBufferInfo, nullptr, &mFrameBuffer[i]), "Create Frame Buffer Failed.");
 }
 
-void VulkanRenderingNode::CreateSignalSemaphore()
+void VulkanPipelineNode::CreateSignalSemaphore()
 {
 	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
 	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	VKFUNC(vkCreateSemaphore(gVulkanDevice, &semaphoreCreateInfo, nullptr, &mSignalSemaphore), "Create Signal Semaphore Failed.");
+	for (int i = 0; i < gSwapChainImageCount; i++)
+		VKFUNC(vkCreateSemaphore(gVulkanDevice, &semaphoreCreateInfo, nullptr, &mSignalSemaphore[i]), "Create Signal Semaphore Failed.");
+}
+
+void VulkanPipelineNode::AddRenderingNodes(RenderingNodeDesc desc)
+{
+	VulkanMaterial* material = reinterpret_cast<VulkanMaterial*>(desc.MaterialAddr);
+	auto matMode = material->GetMaterialMode();
+	if (matMode == MaterialMode::Normal)
+	{
+		std::vector<VkPipelineColorBlendAttachmentState> blendAttach;
+		VkPipelineColorBlendAttachmentState blendAttachState = {};
+		blendAttachState.blendEnable = VK_FALSE;
+		blendAttachState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		for (int i = 0; i < mColorAttachmentCount; i++)
+			blendAttach.push_back(blendAttachState);
+
+		VkPipelineColorBlendStateCreateInfo colorBlendStateInfo = {};
+		colorBlendStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		colorBlendStateInfo.logicOpEnable = VK_FALSE;
+		colorBlendStateInfo.logicOp = VK_LOGIC_OP_COPY;
+		colorBlendStateInfo.attachmentCount = blendAttach.size();
+		colorBlendStateInfo.pAttachments = blendAttach.data();
+		colorBlendStateInfo.blendConstants[0] = 0.0f;
+		colorBlendStateInfo.blendConstants[1] = 0.0f;
+		colorBlendStateInfo.blendConstants[2] = 0.0f;
+		colorBlendStateInfo.blendConstants[3] = 0.0f;
+		mRenderingNodes.push_back(std::make_shared<VulkanRenderingNode>(desc, mVKRenderPass, colorBlendStateInfo));
+	}
+}
+
+VkCommandBuffer VulkanPipelineNode::RecordCommandBuffer(int frameIndex)
+{
+	VkRenderPassBeginInfo renderPassBeginInfo = {};
+	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassBeginInfo.framebuffer = mFrameBuffer[frameIndex];
+	renderPassBeginInfo.renderPass = mVKRenderPass;
+	renderPassBeginInfo.clearValueCount = mClearValue.size();
+	renderPassBeginInfo.pClearValues = mClearValue.data();
+	renderPassBeginInfo.renderArea.offset = {0, 0};
+	renderPassBeginInfo.renderArea.extent = {gScreenWidth, gScreenHeight};
+	auto& commandBuffer = mCommandBuffer[frameIndex];
+	std::vector<VkCommandBuffer> childCommand;
+	childCommand.reserve(mRenderingNodes.size());
+	for (int i = 0; i < mRenderingNodes.size(); i++)
+		childCommand.push_back(mRenderingNodes[i]->RecordCommandBuffer(frameIndex, renderPassBeginInfo));
+	gPipelineGraphicsPrimaryCommandBufferPool->BeginCommandBuffer(commandBuffer);
+	vkCmdExecuteCommands(commandBuffer, childCommand.size(), childCommand.data());
+	gPipelineGraphicsPrimaryCommandBufferPool->EndCommandBuffer(commandBuffer);
+	return mCommandBuffer[frameIndex];
+}
+
+void VulkanRenderingNode::CreatePipeline(RenderingNodeDesc desc, VkRenderPass renderPass, VkPipelineColorBlendStateCreateInfo blendState)
+{
+	VulkanMaterial* material = reinterpret_cast<VulkanMaterial*>(desc.MaterialAddr);
+	auto& descSetVec = material->GetSetLayouts();
+	auto& pushConstantRangeVec = material->GetPushConstantRange();
+	auto& shaderStageVec = material->GetShaderStageInfo();
+	auto inputAssemblyState = material->GetInputAssemblyStateCreateInfo();
+	std::vector<VkVertexInputAttributeDescription> inputAttrVec;
+	VkVertexInputBindingDescription bindingDesc;
+	auto vertexInputState = material->GetVertexInputStateCreateInfo(inputAttrVec, bindingDesc);
+	auto depthStencilState = material->GetDepthStencilStateCreateInfo();
+	auto rasterState = material->GetRasterizationStateCreateInfo();
+
+	VkPipelineMultisampleStateCreateInfo multisampling = {};
+	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampling.sampleShadingEnable = VK_FALSE;
+	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)gScreenWidth;
+	viewport.height = (float)gScreenHeight;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent.width = gScreenWidth;
+	scissor.extent.height = gScreenHeight;
+
+	VkPipelineViewportStateCreateInfo viewportState = {};
+	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportState.viewportCount = 1;
+	viewportState.pViewports = &viewport;
+	viewportState.scissorCount = 1;
+	viewportState.pScissors = &scissor;
+
+	VkPipelineLayoutCreateInfo plCreateInfo = {};
+	plCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	plCreateInfo.pSetLayouts = descSetVec.data();
+	plCreateInfo.setLayoutCount = descSetVec.size();
+	plCreateInfo.pPushConstantRanges = pushConstantRangeVec.data();
+	plCreateInfo.pushConstantRangeCount = pushConstantRangeVec.size();
+	plCreateInfo.pPushConstantRanges = pushConstantRangeVec.data();
+	VKFUNC(vkCreatePipelineLayout(gVulkanDevice, &plCreateInfo, nullptr, &mPipelineLayout), "Create Pipeline Layout Failed.");
+
+	VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {};
+	graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	graphicsPipelineCreateInfo.stageCount = shaderStageVec.size();
+	graphicsPipelineCreateInfo.pStages = shaderStageVec.data();
+	graphicsPipelineCreateInfo.renderPass = renderPass;
+	graphicsPipelineCreateInfo.subpass = 0;
+	graphicsPipelineCreateInfo.layout = mPipelineLayout;
+	graphicsPipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
+	graphicsPipelineCreateInfo.pVertexInputState = &vertexInputState;
+	graphicsPipelineCreateInfo.pDepthStencilState = &depthStencilState;
+	graphicsPipelineCreateInfo.pRasterizationState = &rasterState;
+	graphicsPipelineCreateInfo.pColorBlendState = &blendState;
+	graphicsPipelineCreateInfo.pMultisampleState = &multisampling;
+	graphicsPipelineCreateInfo.pViewportState = &viewportState;
+	VKFUNC(vkCreateGraphicsPipelines(gVulkanDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &mPipeline), "Create Pipeline Failed.");
+}
+
+void VulkanRenderingNode::GenerateCommandBuffer()
+{
+	mCommandBuffer.reserve(gSwapChainImageCount);
+	for(int i = 0; i < gSwapChainImageCount; i ++)
+		mCommandBuffer.push_back(gPipelineGraphicsSecondaryCommandBufferPool->AllocateCommandBuffer(false));
+}
+
+VkCommandBuffer VulkanRenderingNode::RecordCommandBuffer(int frameIndex, VkRenderPassBeginInfo renderPassInfo)
+{
+	auto commandBuffer = mCommandBuffer[frameIndex];
+	if (mDirty[frameIndex] == false)
+		return commandBuffer;
+	gPipelineGraphicsSecondaryCommandBufferPool->BeginCommandBuffer(commandBuffer);
+	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline);
+	
+	VulkanMaterial* mat = reinterpret_cast<VulkanMaterial*>(mMaterialAddr);
+	int descCount;
+	VkDescriptorSet* descSet = mat->GetDescriptorSet(frameIndex, descCount);
+	vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, descCount, descSet, 0, nullptr);
+	
+	for (auto meshAddr : mModelAddr)
+	{
+		VulkanMesh* mesh = reinterpret_cast<VulkanMesh*>(meshAddr);
+		int vertCount = mesh->GetVertexCount();
+		int indCount = mesh->GetIndexCount();
+		int indDataSize = mesh->GetIndexBufferDataSize();
+		VkBuffer* vertBuffer = reinterpret_cast<VkBuffer*>(mesh->GetVertexBufferGPUHandleAddress());
+		VkBuffer* indBuffer = reinterpret_cast<VkBuffer*>(mesh->GetIndexBufferGPUHandleAddress());
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertBuffer, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, *indBuffer, 0, indDataSize == sizeof(UInt16) ? VkIndexType::VK_INDEX_TYPE_UINT16 : VkIndexType::VK_INDEX_TYPE_UINT32);
+		vkCmdDrawIndexed(commandBuffer, indCount, 1, 0, 0, 0);
+	}
+	vkCmdEndRenderPass(commandBuffer);
+	gPipelineGraphicsSecondaryCommandBufferPool->EndCommandBuffer(commandBuffer);
+	return commandBuffer;
+}
+
+VulkanRenderingNode::VulkanRenderingNode(RenderingNodeDesc desc, VkRenderPass renderPass, VkPipelineColorBlendStateCreateInfo blendState)
+{
+	CreatePipeline(desc, renderPass, blendState);
+	mMaterialAddr = desc.MaterialAddr;
+	mModelAddr = desc.ModelAddr;
+	GenerateCommandBuffer();
+}
+
+VulkanRenderingNode::~VulkanRenderingNode()
+{
+	vkDestroyPipelineLayout(gVulkanDevice, mPipelineLayout, nullptr);
+	vkDestroyPipeline(gVulkanDevice, mPipeline, nullptr);
 }

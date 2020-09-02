@@ -7,6 +7,7 @@
 #include <fstream>
 #include <memory>
 #include <map>
+#include <set>
 
 typedef glm::vec4 Vec4;
 typedef glm::vec3 Vec3;

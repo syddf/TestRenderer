@@ -47,6 +47,10 @@ source_group("Vulkan/" FILES
 ./Vulkan/CommandBufferPool.cpp
 ./Vulkan/Buffer.h
 ./Vulkan/Buffer.cpp
+./Vulkan/Material.h
+./Vulkan/Material.cpp
+./Vulkan/Mesh.h
+./Vulkan/Mesh.cpp
 )
 
 source_group("GraphicsAPICommon/" FILES 

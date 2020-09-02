@@ -8,8 +8,12 @@ VulkanMaterial::VulkanMaterial(VulkanMaterialShader materialShader)
 	mShader = materialShader;
 	CreateVulkanDescLayout();
 	CreateVulkanDescSet();
+	CreatePushConstantRange();
+	CreateShaderStageInfo();
 	MergeShaderParams();
 	WriteDescSet();
+
+	mMaterialMode = MaterialMode::Normal;
 }
 
 VulkanMaterial::~VulkanMaterial()
@@ -185,6 +189,55 @@ void VulkanMaterial::CreateVulkanDescSet()
 	VKFUNC(vkAllocateDescriptorSets(gVulkanDevice, &allocateInfo, mVKDescSetVec.data()), "Allocate Descriptor Failed.");
 }
 
+void VulkanMaterial::CreatePushConstantRange()
+{
+	auto AddPushConstantRange = [&](VulkanShader::VulkanShaderPtr shaderPtr, VkPipelineStageFlagBits stageFlag)->void
+	{
+		if (shaderPtr == nullptr)
+			return;
+		auto shaderParams = shaderPtr->GetShaderParams();
+		VkPushConstantRange range = {};
+		range.stageFlags = stageFlag;
+		for (auto pushConstantInfo : shaderParams.PushConstantVec)
+		{
+			range.offset = pushConstantInfo.offset;
+			if (pushConstantInfo.format == "float+4")
+				range.size = 16;
+			else if (pushConstantInfo.format == "float+3")
+				range.size = 12; 
+			else if (pushConstantInfo.format == "matrix")
+				range.size = 64;
+			else if (pushConstantInfo.format == "float")
+				range.size = 4;
+			else if (pushConstantInfo.format == "int")
+				range.size = 4;
+		}
+		mPushConstantRange.push_back(range);
+	};
+
+	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.VertexShader), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
+	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.FragmentShader), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+}
+
+void VulkanMaterial::CreateShaderStageInfo()
+{
+	VkPipelineShaderStageCreateInfo shaderStageCreateInfo = {};
+	shaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shaderStageCreateInfo.pName = "main";
+	if (mShader.VertexShader)
+	{
+		shaderStageCreateInfo.stage = VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT;
+		shaderStageCreateInfo.module = *reinterpret_cast<VkShaderModule*>(mShader.VertexShader->GetGPUShaderHandleAddress());
+		mShaderStageInfoVec.push_back(shaderStageCreateInfo);
+	}
+	else if (mShader.FragmentShader)
+	{
+		shaderStageCreateInfo.stage = VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
+		shaderStageCreateInfo.module = *reinterpret_cast<VkShaderModule*>(mShader.FragmentShader->GetGPUShaderHandleAddress());
+		mShaderStageInfoVec.push_back(shaderStageCreateInfo);
+	}
+}
+
 void VulkanMaterial::CreateUniformBuffers(std::map<int, std::vector<VkDescriptorSetLayoutBinding>>& bindingMap, std::map<int, std::vector<int>>& bindingSizeMap)
 {
 	mMaterialUniformBuffer.resize(gSwapChainImageCount);
@@ -263,4 +316,58 @@ void VulkanMaterial::WriteDescSet()
 		}
 		vkUpdateDescriptorSets(gVulkanDevice, descriptorSetWrite.size(), descriptorSetWrite.data(), 0, nullptr);
 	}
+}
+
+VkPipelineInputAssemblyStateCreateInfo VulkanMaterial::GetInputAssemblyStateCreateInfo()
+{
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo = {};
+	inputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
+	inputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	return inputAssemblyStateCreateInfo;
+}
+
+VkPipelineDepthStencilStateCreateInfo VulkanMaterial::GetDepthStencilStateCreateInfo()
+{
+	VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo = {};
+	depthStencilStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencilStateInfo.depthWriteEnable = VK_TRUE;
+	depthStencilStateInfo.depthTestEnable = VK_TRUE;
+	depthStencilStateInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+	depthStencilStateInfo.depthBoundsTestEnable = VK_FALSE;
+	depthStencilStateInfo.stencilTestEnable = VK_FALSE;
+	return depthStencilStateInfo;
+}
+
+VkPipelineVertexInputStateCreateInfo VulkanMaterial::GetVertexInputStateCreateInfo(std::vector<VkVertexInputAttributeDescription>& attributeDescVec, VkVertexInputBindingDescription& bindingDesc)
+{
+	auto shader = std::static_pointer_cast<VulkanShader>(mShader.VertexShader);
+	bindingDesc = shader->GetInputBindingDescription(attributeDescVec);
+	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {};
+	vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputStateCreateInfo.pVertexAttributeDescriptions = attributeDescVec.data();
+	vertexInputStateCreateInfo.vertexAttributeDescriptionCount = attributeDescVec.size();
+	vertexInputStateCreateInfo.pVertexBindingDescriptions = &bindingDesc;
+	vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+	return vertexInputStateCreateInfo;
+}
+
+VkPipelineRasterizationStateCreateInfo VulkanMaterial::GetRasterizationStateCreateInfo()
+{
+	VkPipelineRasterizationStateCreateInfo createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	createInfo.depthClampEnable = VK_FALSE;
+	createInfo.rasterizerDiscardEnable = VK_FALSE;
+	createInfo.polygonMode = VK_POLYGON_MODE_FILL;
+	createInfo.lineWidth = 1.0f;
+	createInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+	createInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	createInfo.depthBiasEnable = VK_FALSE;
+	return createInfo;
+}
+
+VkDescriptorSet* VulkanMaterial::GetDescriptorSet(int frameIndex, int & descCount)
+{
+	descCount = mVKDescSetLayoutVec.size();
+	return &mVKDescSetVec[frameIndex * descCount];
 }

@@ -19,6 +19,8 @@ private:
 	void MergeShaderParams();
 	void CreateVulkanDescLayout();
 	void CreateVulkanDescSet();
+	void CreatePushConstantRange();
+	void CreateShaderStageInfo();
 	void CreateUniformBuffers(std::map<int, std::vector<VkDescriptorSetLayoutBinding>>& bindingMap, std::map<int, std::vector<int>>& bindingSizeMap);
 
 	template<typename T>
@@ -33,11 +35,25 @@ private:
 
 public:
 	void WriteDescSet();
+	MaterialMode GetMaterialMode() { return mMaterialMode; }
+	std::vector<VkDescriptorSetLayout>& GetSetLayouts() { return mVKDescSetLayoutVec; };
+	std::vector<VkPushConstantRange>& GetPushConstantRange() { return mPushConstantRange; }
+	std::vector<VkPipelineShaderStageCreateInfo>& GetShaderStageInfo() { return mShaderStageInfoVec; }
+	VkPipelineInputAssemblyStateCreateInfo GetInputAssemblyStateCreateInfo();
+	VkPipelineDepthStencilStateCreateInfo GetDepthStencilStateCreateInfo();
+	VkPipelineVertexInputStateCreateInfo GetVertexInputStateCreateInfo(std::vector<VkVertexInputAttributeDescription>& attributeDescVec, VkVertexInputBindingDescription& bindingDesc);
+	VkPipelineRasterizationStateCreateInfo GetRasterizationStateCreateInfo();
+	VkDescriptorSet* GetDescriptorSet(int frameIndex, int& descCount);
 
 private:
 	MaterialParams mParams;
 	VulkanMaterialShader mShader;
+	MaterialMode mMaterialMode;
+
 	std::vector<VkDescriptorSetLayout> mVKDescSetLayoutVec;
+	std::vector<VkPushConstantRange> mPushConstantRange;
+	std::vector<VkPipelineShaderStageCreateInfo> mShaderStageInfoVec;
+
 	VkDescriptorPoolSize mUniformBufferPoolSize;
 	VkDescriptorPoolSize mImageSamplerPoolSize;
 	VkDescriptorPool mDescriptorPool;

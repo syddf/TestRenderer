@@ -121,6 +121,7 @@ struct ImageViewDesc
 
 struct FrameBufferDesc
 {
+	std::vector<std::string> AttachmentName;
 	std::vector<char*> AttachmentImageViewHandlePtr;
 	UInt32 Width;
 	UInt32 Height;
@@ -143,11 +144,18 @@ struct RenderingPipelineNodeDesc
 {
 	FrameBufferLayoutDesc FrameBufferLayoutDesc;
 	FrameBufferDesc FrameBufferDesc;
-	std::vector<char*> DependingAttachmentViewPtr;
+	std::vector<std::string> DependingAttachmentViewName;
 	std::vector<int> DependingNodeIndex;
 	PipelineBindPoint BindPoint;
+	std::string NodeName;
 	bool AttachToWindowNode;
 	bool AffectOtherNode;
+};
+
+struct RenderingNodeDesc
+{
+	char* MaterialAddr;
+	std::vector<char*> ModelAddr;
 };
 
 template<typename T>
@@ -176,4 +184,9 @@ struct MaterialParams
 	std::map<std::string, ConstantBufferParam<float>> FloatParams;
 	std::map<std::string, ConstantBufferParam<int>> IntParams;
 	std::map<std::string, ImageParam> ImageParams;
+};
+
+enum MaterialMode
+{
+	Normal
 };

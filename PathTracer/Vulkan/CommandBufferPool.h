@@ -13,10 +13,15 @@ public:
 	VkCommandBuffer BeginSingleTimeCommandBuffer(bool Primary);
 	void EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer);
 
+	VkCommandBuffer AllocateCommandBuffer(bool Primary);
+	void BeginCommandBuffer(VkCommandBuffer commandBuffer);
+	void EndCommandBuffer(VkCommandBuffer commandBuffer);
+
 private:
 	void InitializeCommandBufferPool(UInt32 QueueIndex, bool Transient, bool BufferIndividual);
 
 private:
 	VkCommandPool mCommandPool;
 	VkQueue mQueue;
+	std::set<VkCommandBuffer> mCommandBufferSet;
 };

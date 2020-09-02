@@ -1,6 +1,8 @@
 #include "RenderingPipeline.h"
 #include "RenderPass.h"
 
+extern UInt32 gSwapChainImageCount;
+
 VulkanRenderingPipeline::VulkanRenderingPipeline()
 {
 }
@@ -13,10 +15,10 @@ void VulkanRenderingPipeline::GenerateRenderingGraph(std::vector<RenderingPipeli
 {
 	for (size_t i = 0; i < nodesVec.size(); i ++)
 	{
-		for (size_t j = 0; j < nodesVec[i].FrameBufferDesc.AttachmentImageViewHandlePtr.size(); j ++)
+		for (size_t j = 0; j < nodesVec[i].FrameBufferDesc.AttachmentName.size(); j ++)
 		{
-			VkImageView attachmentViewHandle = *reinterpret_cast<VkImageView*>(nodesVec[i].FrameBufferDesc.AttachmentImageViewHandlePtr[j]);
-			mAttachmentAffectNodesMap[attachmentViewHandle].push_back(i);
+			std::string attachmentViewName = nodesVec[i].FrameBufferDesc.AttachmentName[j];
+			mAttachmentAffectNodesMap[attachmentViewName].push_back(i);
 		}
 	}
 
@@ -24,16 +26,16 @@ void VulkanRenderingPipeline::GenerateRenderingGraph(std::vector<RenderingPipeli
 	graphEdgeMap.resize(nodesVec.size(), std::vector<int>(nodesVec.size(), 0));
 	for (size_t i = 0; i < nodesVec.size(); i ++)
 	{
-		for (size_t j = 0; j < nodesVec[i].DependingAttachmentViewPtr.size(); j ++)
+		for (size_t j = 0; j < nodesVec[i].DependingAttachmentViewName.size(); j ++)
 		{
-			VkImageView dependingImageViewHandle = *reinterpret_cast<VkImageView*>(nodesVec[i].DependingAttachmentViewPtr[j]);
-			if (mAttachmentAffectNodesMap.find(dependingImageViewHandle) == mAttachmentAffectNodesMap.end())
+			std::string dependingImageViewName = nodesVec[i].DependingAttachmentViewName[j];
+			if (mAttachmentAffectNodesMap.find(dependingImageViewName) == mAttachmentAffectNodesMap.end())
 			{
 				throw "Unexpected Depending Attachment.";
 			}
 			else
 			{
-				auto dependingNodeVec = mAttachmentAffectNodesMap[dependingImageViewHandle];
+				auto dependingNodeVec = mAttachmentAffectNodesMap[dependingImageViewName];
 				for (auto dependingNode : dependingNodeVec)
 				{
 					graphEdgeMap[dependingNode][i] = 1;
@@ -48,21 +50,24 @@ void VulkanRenderingPipeline::GenerateRenderingGraph(std::vector<RenderingPipeli
 
 	for (size_t i = 0; i < nodesVec.size(); i ++)
 	{
-		mRenderingNodesVec[i] = std::make_shared<VulkanRenderingNode>(nodesVec[i]);
+		mRenderingNodesVec[i] = std::make_shared<VulkanPipelineNode>(nodesVec[i]);
 	}
 
 	for (size_t i = 0; i < nodesVec.size(); i++)
 	{
 		if (nodesVec[i].AffectOtherNode)
 		{
-			static_cast<VulkanRenderingNode*>(mRenderingNodesVec[i].get())->CreateSignalSemaphore();
+			static_cast<VulkanPipelineNode*>(mRenderingNodesVec[i].get())->CreateSignalSemaphore();
 		}
 		auto dependingNodeIndexVec = nodesVec[i].DependingNodeIndex;
 		for (size_t j = 0; j < dependingNodeIndexVec.size(); j ++)
 		{
 			size_t dependingNodeInd = nodesVec[i].DependingNodeIndex[j];
-			static_cast<VulkanRenderingNode*>(mRenderingNodesVec[i].get())->
-				AddWaitSemaphore(static_cast<VulkanRenderingNode*>(mRenderingNodesVec[dependingNodeInd].get())->GetSignalSemaphore());
+			for (int frameIndex = 0; frameIndex < gSwapChainImageCount; frameIndex++)
+			{
+				static_cast<VulkanPipelineNode*>(mRenderingNodesVec[i].get())->
+					AddWaitSemaphore(static_cast<VulkanPipelineNode*>(mRenderingNodesVec[dependingNodeInd].get())->GetSignalSemaphore(frameIndex), frameIndex);
+			}
 		}
 	}
 }

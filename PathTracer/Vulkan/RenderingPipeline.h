@@ -15,6 +15,6 @@ public:
 	void TopologySort(std::vector<RenderingPipelineNodeDesc>& nodesVec, std::vector<std::vector<int>> dependingMap);
 
 private:
-	std::map<VkImageView, std::vector<int>> mAttachmentAffectNodesMap;
+	std::map<std::string, std::vector<int>> mAttachmentAffectNodesMap;
 	std::vector<NodePtr> mRenderingNodesVec;
 };

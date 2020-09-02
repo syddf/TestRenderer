@@ -146,7 +146,7 @@ struct TexelToVertex
 	float TotalSampleWeight = 0.0f;
 	float MaxSampleWeight = 0.0f;
 
-	StaticLightingVertex GetVertex() const 
+	StaticLightingVertex GetVertex() const
 	{
 		StaticLightingVertex Vertex;
 		Vertex.Position = Position;
@@ -250,7 +250,7 @@ public:
 	TexelCornerRasterPolicy(TexelToCornersMap& InTexelToCornersMap, int InCornerIndex)
 		:TexelToCornersMap(InTexelToCornersMap), CornerIndex(InCornerIndex)
 	{
-		
+
 	}
 
 protected:
@@ -358,7 +358,7 @@ public:
 		SizeX(InSizeX),
 		SizeY(InSizeY)
 	{
-	
+
 	}
 
 protected:
@@ -405,16 +405,16 @@ struct StaticLightingSystem
 			StaticLightingVertex V0 = VertexVec[Index];
 			StaticLightingVertex V1 = VertexVec[Index + 1];
 			StaticLightingVertex V2 = VertexVec[Index + 2];
-			
+
 			for (int CornerIndex = 0; CornerIndex < 4; CornerIndex++)
 			{
 				TriangleRasterizer<TexelCornerRasterPolicy> TexelCornerRas(TexelCornerRasterPolicy(TexelToCornersMap, CornerIndex));
 				TexelCornerRas.DrawTriangle(
-					V0, 
-					V1, 
-					V2, 
+					V0,
+					V1,
+					V2,
 					V0.TexCoord1 * Vec2(TexelToCornersMap.SizeX, TexelToCornersMap.SizeY) + CornerOffsets[CornerIndex],
-					V1.TexCoord1 * Vec2(TexelToCornersMap.SizeX, TexelToCornersMap.SizeY) + CornerOffsets[CornerIndex], 
+					V1.TexCoord1 * Vec2(TexelToCornersMap.SizeX, TexelToCornersMap.SizeY) + CornerOffsets[CornerIndex],
 					V2.TexCoord1 * Vec2(TexelToCornersMap.SizeX, TexelToCornersMap.SizeY) + CornerOffsets[CornerIndex]);
 			}
 			Index += 3;
@@ -448,10 +448,10 @@ struct StaticLightingSystem
 						const float SampleWeight = (1.0f - std::abs(1 + SampleXOffset * 2)) * (1.0f - std::abs(1 + SampleYOffset * 2));
 
 						TriangleRasterizer<StaticLightingRasterPolicy> TexelMappingRasterizer(StaticLightingRasterPolicy(
-								TexelToVertexMap,
-								SampleWeight,
-								TriangleNormal
-							));
+							TexelToVertexMap,
+							SampleWeight,
+							TriangleNormal
+						));
 
 						TexelMappingRasterizer.DrawTriangle(
 							V0,
@@ -463,7 +463,7 @@ struct StaticLightingSystem
 						);
 					}
 				}
-				
+
 			}
 
 			Index += 3;
@@ -589,7 +589,7 @@ struct StaticLightingSystem
 			int HighResolutionY = Height * UpSampleFactor;
 
 			SignedDistanceFieldShadowMapData2D* ShadowMapData = new SignedDistanceFieldShadowMapData2D(Width, Height);
-			const int Neighbors[4][2] = 
+			const int Neighbors[4][2] =
 			{
 				{0, 1},
 				{0, -1},
@@ -597,10 +597,10 @@ struct StaticLightingSystem
 				{-1, 0}
 			};
 
-			const int Corners[4][2] = 
+			const int Corners[4][2] =
 			{
 				{0, 0},
-			    {0, UpSampleFactor - 1},
+				{0, UpSampleFactor - 1},
 				{UpSampleFactor - 1, 0},
 				{UpSampleFactor - 1, UpSampleFactor - 1}
 			};
@@ -768,7 +768,7 @@ struct StaticLightingSystem
 											const LowResolutionVisibilitySample& LowResNeighborSample = Visibility2D(LowResNewX, LowResNewY);
 											if (LowResNeighborSample.NeedHighResolutionSamples)
 											{
-												const VisibilitySample& HighResNeighborSample = 
+												const VisibilitySample& HighResNeighborSample =
 													LowResNeighborSample.HighResolutionSamples[(HighResNewY) % UpSampleFactor * UpSampleFactor + HighResNewX % UpSampleFactor];
 												if (HighResNeighborSample.GetMapped() && HighResNeighborSample.GetVisible())
 												{
@@ -798,7 +798,7 @@ struct StaticLightingSystem
 											int NewHighResY = HighResY + Neighbors[NeighborIndex][1];
 											if (InRange(NewHighResX, NewHighResY, UpSampleFactor, UpSampleFactor))
 											{
-												const VisibilitySample& NeighborSample = 
+												const VisibilitySample& NeighborSample =
 													CurrentLowResSample.HighResolutionSamples[NewHighResY * UpSampleFactor + NewHighResX];
 												float Length = glm::length((NeighborSample.GetPosition() - HighResSample.GetPosition()));
 												if (NeighborIndex >= 2)
@@ -821,7 +821,7 @@ struct StaticLightingSystem
 										{
 											WorldSpacePerHighResTexelX = WorldSpacePerHighResTexelY;
 										}
-										else if (WorldSpacePerHighResTexelY == MAXF) 
+										else if (WorldSpacePerHighResTexelY == MAXF)
 										{
 											WorldSpacePerHighResTexelY = WorldSpacePerHighResTexelX;
 										}
@@ -836,18 +836,18 @@ struct StaticLightingSystem
 											for (int ScatterOffsetX = -LowResScatterTexelsCountX; ScatterOffsetX <= LowResScatterTexelsCountX; ScatterOffsetX++)
 											{
 												//更新相应的低分辨率纹素的距离场结果
-											}
-										}
+												UInt32 LowResScatterX = LowResX + ScatterOffsetX;
+												UInt32 LowResScatterY = LowResX + ScatterOffsetY;
 
 												const LowResolutionVisibilitySample& LowResScatterSample = Visibility2D(LowResScatterX, LowResScatterY);
-												
+
 												if (LowResScatterSample.GetMapped())
 												{
 													bool CurrentRegion = false;
 													Vec3 ScatterPosition;
 													Vec3 ScatterNormal;
 													bool FoundScatterPosition = false;
-												
+
 													if (LowResScatterSample.NeedHighResolutionSamples)
 													{
 														int CenterSampleIndex = (UpSampleFactor / 2) * UpSampleFactor + UpSampleFactor / 2;
@@ -881,16 +881,16 @@ struct StaticLightingSystem
 															}
 														}
 													}
-													
+
 													if (!FoundScatterPosition)
 													{
 														CurrentRegion = LowResScatterSample.GetVisible();
 														ScatterPosition = LowResScatterSample.GetPosition();
 														ScatterNormal = LowResScatterSample.GetNormal();
 													}
-													
+
 													const float TransitionDistance = glm::length(ScatterPosition - HighResSample.GetPosition());
-													const float NormalizedDistance = glm::clamp(TransitionDistance / MaxTransitionDistanceWorldSpace, 0.0f , 1.0f);
+													const float NormalizedDistance = glm::clamp(TransitionDistance / MaxTransitionDistanceWorldSpace, 0.0f, 1.0f);
 													SignedDistanceFieldShadowSampleData& FinalShadowSample = (*ShadowMapData)(LowResScatterX, LowResScatterY);
 													if (NormalizedDistance * 0.5f < std::abs(FinalShadowSample.Distance - 0.5f))
 													{
@@ -899,6 +899,7 @@ struct StaticLightingSystem
 												}
 											}
 										}
+
 									}
 								}
 							}
@@ -906,9 +907,9 @@ struct StaticLightingSystem
 					}
 				}
 			}
-
 			ShadowMapData->Output();
 		}
+
 	}
 
 };
