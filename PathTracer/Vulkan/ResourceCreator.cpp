@@ -4,6 +4,9 @@
 std::map<std::string, VulkanShader::VulkanShaderPtr> shaderMap;
 std::map<std::string, IImage::ImagePtr> imageMap;
 std::map<std::string, std::shared_ptr<VulkanMeshData>> meshDataMap;
+std::map<std::string, VulkanAttachment::AttachmentPtr> attachmentMap;
+extern UInt32 gScreenWidth;
+extern UInt32 gScreenHeight;
 
 VulkanShaderType GetVulkanShaderType(ShaderTypeEnum importShaderType)
 {
@@ -133,6 +136,60 @@ IMesh::MeshPtr ResourceCreator::CreateMeshFromFile(std::string modelDataFile, st
 	return meshDataMap[modelDataFile]->ExportVulkanMesh(meshChannels, meshIndex);
 }
 
+VulkanAttachment::AttachmentPtr ResourceCreator::CreateDepthStencilAttachment(std::string name, int width, int height)
+{
+	if (width == 0 && height == 0)
+	{
+		width = gScreenWidth;
+		height = gScreenHeight;
+	}
+	ImageDesc desc = {};
+	desc.Dimension = TextureDimension::Texture2D;
+	desc.Depth = 1;
+	desc.Width = width;
+	desc.Height = height;
+	desc.MipLevels = 1;
+	desc.Format = TextureFormat::TF_D24US8;
+	desc.GenerateMipMap = true;
+	desc.ArrayLayers = 1;
+	desc.Usage = TextureUsageBits::TU_DEPTH_STENCIL;
+	VulkanAttachment::AttachmentPtr newAttach = std::make_shared<VulkanAttachment>(desc, false);
+	attachmentMap[name] = newAttach;
+	return newAttach;
+}
+
+VulkanAttachment::AttachmentPtr ResourceCreator::CreateColorAttachment(std::string name, int width, int height)
+{
+	if (width == 0 && height == 0)
+	{
+		width = gScreenWidth;
+		height = gScreenHeight;
+	}
+	ImageDesc desc = {};
+	desc.Dimension = TextureDimension::Texture2D;
+	desc.Depth = 1;
+	desc.Width = gScreenWidth;
+	desc.Height = gScreenHeight;
+	desc.MipLevels = 1;
+	desc.Format = TextureFormat::TF_R32G32B32A32SFloat;
+	desc.GenerateMipMap = true;
+	desc.ArrayLayers = 1;
+	desc.Usage = TextureUsageBits::TU_COLOR_ATTACHMENT | TextureUsageBits::TU_SHADER_RESOURCE;
+	VulkanAttachment::AttachmentPtr newAttach = std::make_shared<VulkanAttachment>(desc, true);
+	attachmentMap[name] = newAttach;
+	return newAttach;
+}
+
+VulkanAttachment::AttachmentPtr ResourceCreator::RenameAttachment(std::string originName, std::string anotherName)
+{
+	if (attachmentMap.find(originName) == attachmentMap.end())
+	{
+		throw "Unexpected attachment Name";
+	}
+	attachmentMap[anotherName] = attachmentMap[originName];
+	return attachmentMap[anotherName];
+}
+
 VulkanShader::VulkanShaderPtr ResourceCreator::CreateShaderFromFile(std::string shaderFile)
 {
 	if (shaderMap.find(shaderFile) == shaderMap.end())
@@ -165,5 +222,6 @@ void ResourceCreator::DestroyCachingResource()
 	shaderMap.clear();
 	imageMap.clear();
 	meshDataMap.clear();
+	attachmentMap.clear();
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include "VulkanCommon.h"
 #include "./../GraphicsAPICommon/GraphicsInterface.h"
+#include "VulkanAttachment.h"
 
 class VulkanRenderingNode
 {
@@ -39,6 +40,7 @@ public:
 
 private:
 	VkRenderPass mVKRenderPass;
+	std::vector<VulkanAttachment::AttachmentPtr> mAttachment;
 	std::vector<VkFramebuffer> mFrameBuffer;
 	std::vector<VkSemaphore> mSignalSemaphore;
 	std::vector<VkCommandBuffer> mCommandBuffer;

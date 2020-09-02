@@ -9,6 +9,7 @@ public:
 
 public:
 	void CreateImage(ImageDesc desc);
+	void TranslateImageLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout, VkImageAspectFlags aspect, UInt32 mipLevels);
 	void TranslateImageLayout(VkImageLayout newLayout, VkImageAspectFlags aspect, UInt32 mipLevels);
 	void GenerateMipMap(UInt32 Width, UInt32 Height, UInt32 MipLevels);
 	char* GetGPUImageHandleAddress();

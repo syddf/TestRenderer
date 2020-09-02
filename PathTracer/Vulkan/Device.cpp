@@ -44,6 +44,7 @@ VulkanDevice::~VulkanDevice()
 	delete gTranslateEngine;
 	delete gGraphicsCommonCommandBufferPool;
 	delete gPipelineGraphicsSecondaryCommandBufferPool;
+	delete gPipelineGraphicsPrimaryCommandBufferPool;
 
 	vkDestroyDevice(mDevice, nullptr);
 

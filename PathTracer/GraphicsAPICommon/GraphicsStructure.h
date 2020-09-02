@@ -19,6 +19,7 @@ enum TextureFormat
 	TF_R8G8B8A8SRGB,
 	TF_B8G8R8A8SRGB,
 	TF_R32G32B32A32SFloat,
+	TF_D24US8
 };
 
 enum AttachmentOperator
@@ -122,7 +123,6 @@ struct ImageViewDesc
 struct FrameBufferDesc
 {
 	std::vector<std::string> AttachmentName;
-	std::vector<char*> AttachmentImageViewHandlePtr;
 	UInt32 Width;
 	UInt32 Height;
 };

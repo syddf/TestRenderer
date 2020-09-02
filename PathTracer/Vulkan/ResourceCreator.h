@@ -9,6 +9,7 @@
 #include "Mesh.h"
 #include "./../../AssetImporter/ImportTextureData.h"
 #include "./../../AssetImporter/ImportSPIRVShaderData.h"
+#include "VulkanAttachment.h"
 
 class ResourceCreator
 {
@@ -19,9 +20,10 @@ public:
 	static IBuffer::BufferPtr CreateVertexBuffer(char* bufferData, UInt32 bufferSize);
 	static IBuffer::BufferPtr CreateIndexBuffer(char* bufferData, UInt32 bufferSize);
 	static VulkanMaterial::MaterialPtr CreateMaterial(std::string vertexShader, std::string fragmentShader);
-
 	static IMesh::MeshPtr CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex);
-
+	static VulkanAttachment::AttachmentPtr CreateDepthStencilAttachment(std::string name, int width, int height);
+	static VulkanAttachment::AttachmentPtr CreateColorAttachment(std::string name, int width, int height);
+	static VulkanAttachment::AttachmentPtr RenameAttachment(std::string originName, std::string anotherName);
 	static VulkanShader::VulkanShaderPtr CreateShaderFromFile(std::string shaderFile);
 	static TextureDimension GetTextureDimension(TextureTypeEnum texType);
 	static TextureFormat GetImageImportDataFormat(int channel)

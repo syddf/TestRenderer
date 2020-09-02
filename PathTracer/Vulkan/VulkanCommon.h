@@ -28,6 +28,8 @@ static VkFormat GetVKTextureFormat(TextureFormat format)
 			return VkFormat::VK_FORMAT_B8G8R8A8_SRGB;
 		case TextureFormat::TF_R8G8B8SRGB:
 			return VkFormat::VK_FORMAT_R8G8B8_SRGB;
+		case TextureFormat::TF_D24US8:
+			return VkFormat::VK_FORMAT_D24_UNORM_S8_UINT;
 	}
 	return VkFormat::VK_FORMAT_UNDEFINED;
 }

@@ -2,6 +2,7 @@
 #include "Material.h"
 #include "CommandBufferPool.h"
 #include "Mesh.h"
+#include "VulkanAttachment.h"
 
 extern VkDevice gVulkanDevice;
 extern UInt32 gScreenWidth;
@@ -9,6 +10,7 @@ extern UInt32 gScreenHeight;
 extern VulkanCommandBufferPool* gPipelineGraphicsSecondaryCommandBufferPool;
 extern VulkanCommandBufferPool* gPipelineGraphicsPrimaryCommandBufferPool;
 extern UInt32 gSwapChainImageCount;
+extern std::map<std::string, VulkanAttachment::AttachmentPtr> attachmentMap;
 
 VulkanPipelineNode::VulkanPipelineNode(const RenderingPipelineNodeDesc & desc)
 {
@@ -111,21 +113,30 @@ void VulkanPipelineNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc & 
 
 	VKFUNC(vkCreateRenderPass(gVulkanDevice, &renderPassCreateInfo, nullptr, &mVKRenderPass), "Create Render Pass Failed.");
 
-	std::vector<VkImageView> attachmentView;
-	attachmentView.resize(desc.FrameBufferDesc.AttachmentImageViewHandlePtr.size());
-	for (size_t i = 0; i < desc.FrameBufferDesc.AttachmentImageViewHandlePtr.size(); i ++)
+	for (size_t i = 0; i < desc.FrameBufferDesc.AttachmentName.size(); i++)
 	{
-		attachmentView[i] = *reinterpret_cast<VkImageView*>(desc.FrameBufferDesc.AttachmentImageViewHandlePtr[i]);
+		auto attach = attachmentMap[desc.FrameBufferDesc.AttachmentName[i]];
+		mAttachment.push_back(attach);
 	}
-	VkFramebufferCreateInfo frameBufferInfo = {};
-	frameBufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	frameBufferInfo.width = desc.FrameBufferDesc.Width;
-	frameBufferInfo.height = desc.FrameBufferDesc.Height;
-	frameBufferInfo.pAttachments = attachmentView.data();
-	frameBufferInfo.attachmentCount = attachmentView.size();
-	frameBufferInfo.layers = 1;
-	for(int i = 0; i < gSwapChainImageCount; i ++)
-		VKFUNC(vkCreateFramebuffer(gVulkanDevice, &frameBufferInfo, nullptr, &mFrameBuffer[i]), "Create Frame Buffer Failed.");
+	for (int frameIndex = 0; frameIndex < gSwapChainImageCount; frameIndex++)
+	{
+		std::vector<VkImageView> attachmentView;
+		attachmentView.reserve(desc.FrameBufferDesc.AttachmentName.size());
+		for (size_t i = 0; i < desc.FrameBufferDesc.AttachmentName.size(); i++)
+		{
+			auto attach = attachmentMap[desc.FrameBufferDesc.AttachmentName[i]];
+			attachmentView.push_back(*reinterpret_cast<VkImageView*>(attach->GetImage(frameIndex)->GetGPUImageViewHandleAddress()));
+		}
+		VkFramebufferCreateInfo frameBufferInfo = {};
+		frameBufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		frameBufferInfo.width = desc.FrameBufferDesc.Width;
+		frameBufferInfo.height = desc.FrameBufferDesc.Height;
+		frameBufferInfo.pAttachments = attachmentView.data();
+		frameBufferInfo.attachmentCount = attachmentView.size();
+		frameBufferInfo.layers = 1;
+
+		VKFUNC(vkCreateFramebuffer(gVulkanDevice, &frameBufferInfo, nullptr, &mFrameBuffer[frameIndex]), "Create Frame Buffer Failed.");
+	}
 }
 
 void VulkanPipelineNode::CreateSignalSemaphore()
@@ -179,6 +190,10 @@ VkCommandBuffer VulkanPipelineNode::RecordCommandBuffer(int frameIndex)
 	for (int i = 0; i < mRenderingNodes.size(); i++)
 		childCommand.push_back(mRenderingNodes[i]->RecordCommandBuffer(frameIndex, renderPassBeginInfo));
 	gPipelineGraphicsPrimaryCommandBufferPool->BeginCommandBuffer(commandBuffer);
+	for (auto attach : mAttachment)
+	{
+		attach->TranslateAttachmentImage(frameIndex, commandBuffer);
+	}
 	vkCmdExecuteCommands(commandBuffer, childCommand.size(), childCommand.data());
 	gPipelineGraphicsPrimaryCommandBufferPool->EndCommandBuffer(commandBuffer);
 	return mCommandBuffer[frameIndex];
