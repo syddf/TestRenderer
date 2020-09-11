@@ -33,6 +33,7 @@ public:
 public:
 	void GenerateGraphicsNode(const RenderingPipelineNodeDesc& desc);
 	VkSemaphore GetSignalSemaphore(int frameIndex) const { return mSignalSemaphore[frameIndex]; }
+	std::vector<VkSemaphore>& GetWaitSemaphore(int frameIndex) { return mWaitSemaphore[frameIndex]; }
 	void AddWaitSemaphore(VkSemaphore waitSemaphore, int frameIndex) { assert(waitSemaphore != VK_NULL_HANDLE); mWaitSemaphore[frameIndex].push_back(waitSemaphore); };
 	void CreateSignalSemaphore();
 	void AddRenderingNodes(RenderingNodeDesc desc);

@@ -55,9 +55,13 @@ void VulkanRenderingPipeline::GenerateRenderingGraph(std::vector<RenderingPipeli
 
 	for (size_t i = 0; i < nodesVec.size(); i++)
 	{
-		if (nodesVec[i].AffectOtherNode)
+		static_cast<VulkanPipelineNode*>(mRenderingNodesVec[i].get())->CreateSignalSemaphore();
+		if (!nodesVec[i].AffectOtherNode)
 		{
-			static_cast<VulkanPipelineNode*>(mRenderingNodesVec[i].get())->CreateSignalSemaphore();
+			for (int frameIndex = 0; frameIndex < gSwapChainImageCount; frameIndex++)
+			{
+				mRenderFinishSemaphore[frameIndex].push_back(static_cast<VulkanPipelineNode*>(mRenderingNodesVec[i].get())->GetSignalSemaphore(frameIndex));
+			}
 		}
 		auto dependingNodeIndexVec = nodesVec[i].DependingNodeIndex;
 		for (size_t j = 0; j < dependingNodeIndexVec.size(); j ++)
@@ -124,4 +128,35 @@ void VulkanRenderingPipeline::TopologySort(std::vector<RenderingPipelineNodeDesc
 	}
 
 	nodesVec.swap(resultVec);
+}
+
+void VulkanRenderingPipeline::SubmitRenderingCommands(int frameIndex, VkQueue graphicsQueue)
+{
+	std::vector<VkSubmitInfo> submitVec;
+	submitVec.reserve(mRenderingNodesVec.size());
+	for (auto node : mRenderingNodesVec)
+	{
+		auto commandBuffer = std::dynamic_pointer_cast<VulkanPipelineNode>(node)->RecordCommandBuffer(frameIndex);
+		auto& waitSema = std::dynamic_pointer_cast<VulkanPipelineNode>(node)->GetWaitSemaphore(frameIndex);
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pCommandBuffers = &commandBuffer;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.waitSemaphoreCount = waitSema.size();
+		if (submitInfo.waitSemaphoreCount > 0)
+		{
+			submitInfo.pWaitSemaphores = waitSema.data();
+			std::vector<VkPipelineStageFlags> waitFlags;
+			waitFlags.resize(waitSema.size(), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+			submitInfo.pWaitDstStageMask = waitFlags.data(); // to be modified
+		}
+		auto signalSema = std::dynamic_pointer_cast<VulkanPipelineNode>(node)->GetSignalSemaphore(frameIndex);
+		if (signalSema != VK_NULL_HANDLE)
+		{
+			submitInfo.pSignalSemaphores = &signalSema;
+			submitInfo.signalSemaphoreCount = 1;
+		}
+		submitVec.push_back(submitInfo);
+	}
+	vkQueueSubmit(graphicsQueue, submitVec.size(), submitVec.data(), VK_NULL_HANDLE);
 }

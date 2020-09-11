@@ -8,6 +8,7 @@
 #include <memory>
 #include <map>
 #include <set>
+#include <array>
 
 typedef glm::vec4 Vec4;
 typedef glm::vec3 Vec3;
