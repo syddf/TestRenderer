@@ -169,6 +169,7 @@ struct ConstantBufferParam
 
 struct ImageParam
 {
+	bool Attachment;
 	TextureDimension ImageDimension;
 	int Set;
 	int Binding;

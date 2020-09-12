@@ -35,6 +35,7 @@ private:
 
 public:
 	void WriteDescSet();
+	void WriteDescSet(int frameIndex);
 	MaterialMode GetMaterialMode() { return mMaterialMode; }
 	std::vector<VkDescriptorSetLayout>& GetSetLayouts() { return mVKDescSetLayoutVec; };
 	std::vector<VkPushConstantRange>& GetPushConstantRange() { return mPushConstantRange; }
@@ -44,6 +45,20 @@ public:
 	VkPipelineVertexInputStateCreateInfo GetVertexInputStateCreateInfo(std::vector<VkVertexInputAttributeDescription>& attributeDescVec, VkVertexInputBindingDescription& bindingDesc);
 	VkPipelineRasterizationStateCreateInfo GetRasterizationStateCreateInfo();
 	VkDescriptorSet* GetDescriptorSet(int frameIndex, int& descCount);
+
+public:
+	void SetFloat4(std::string paramName, Vec4 value);
+	void SetFloat3(std::string paramName, Vec3 value);
+	void SetFloat(std::string paramName, float value);
+	void SetMatrix(std::string paramName, Matrix& matrix);
+	void SetImage(std::string paramName, std::string value);
+	void BindImageAttachment(std::string paramName, std::string value);
+	void Update(int frameIndex);
+	void TranslateImageLayout(int frameIndex, VkCommandBuffer commandBuffer);
+
+private:
+	std::vector<bool> mConstantBufferDirty;
+	std::vector<bool> mImageDirty;
 
 private:
 	MaterialParams mParams;

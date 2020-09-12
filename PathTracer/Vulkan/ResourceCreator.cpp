@@ -1,10 +1,13 @@
 #include "ResourceCreator.h"
 #include "Image.h"
-
+#include "WorldObject.h"
 std::map<std::string, VulkanShader::VulkanShaderPtr> shaderMap;
 std::map<std::string, IImage::ImagePtr> imageMap;
 std::map<std::string, std::shared_ptr<VulkanMeshData>> meshDataMap;
 std::map<std::string, VulkanAttachment::AttachmentPtr> attachmentMap;
+std::map<std::string, IMesh::MeshPtr> meshMap;
+std::map<std::string, VulkanMaterial::MaterialPtr> materialMap;
+std::map<std::string, WorldObject> objectMap;
 extern UInt32 gScreenWidth;
 extern UInt32 gScreenHeight;
 
@@ -95,16 +98,24 @@ IBuffer::BufferPtr ResourceCreator::CreateIndexBuffer(char * bufferData, UInt32 
 	return indexBuffer;
 }
 
-VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string vertexShader, std::string fragmentShader)
+VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string materialName, std::string vertexShader, std::string fragmentShader)
 {
+	if (materialMap.find(materialName) != materialMap.end())
+	{
+		return materialMap[materialName];
+	}
 	VulkanMaterialShader materialShader = {};
 	materialShader.VertexShader = CreateShaderFromFile(vertexShader);
 	materialShader.FragmentShader = CreateShaderFromFile(fragmentShader);
-	return std::make_shared<VulkanMaterial>(materialShader);
+	return materialMap[materialName] = std::make_shared<VulkanMaterial>(materialShader);
 }
 
-IMesh::MeshPtr ResourceCreator::CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex)
+IMesh::MeshPtr ResourceCreator::CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex, std::string modelName)
 {
+	if (meshMap.find(modelName) != meshMap.end())
+	{
+		return meshMap[modelName];
+	}
 	auto meshData = GetAsset<ImportSceneData>(modelDataFile);
 	auto vertexShader = CreateShaderFromFile(vertexShaderFile);
 	auto shaderType = vertexShader->GetShaderType();
@@ -133,7 +144,7 @@ IMesh::MeshPtr ResourceCreator::CreateMeshFromFile(std::string modelDataFile, st
 	{
 		meshDataMap[modelDataFile] = std::make_shared<VulkanMeshData>(*meshData);
 	}
-	return meshDataMap[modelDataFile]->ExportVulkanMesh(meshChannels, meshIndex);
+	return meshMap[modelName] = meshDataMap[modelDataFile]->ExportVulkanMesh(meshChannels, meshIndex);
 }
 
 VulkanAttachment::AttachmentPtr ResourceCreator::CreateDepthStencilAttachment(std::string name, int width, int height)
@@ -190,6 +201,12 @@ VulkanAttachment::AttachmentPtr ResourceCreator::RenameAttachment(std::string or
 	return attachmentMap[anotherName];
 }
 
+VulkanAttachment::AttachmentPtr ResourceCreator::GetAttachment(std::string attachName)
+{
+	assert(attachmentMap.find(attachName) != attachmentMap.end());
+	return attachmentMap[attachName];
+}
+
 VulkanShader::VulkanShaderPtr ResourceCreator::CreateShaderFromFile(std::string shaderFile)
 {
 	if (shaderMap.find(shaderFile) == shaderMap.end())
@@ -217,11 +234,20 @@ TextureDimension ResourceCreator::GetTextureDimension(TextureTypeEnum texType)
 	return TextureDimension::None;
 }
 
+void ResourceCreator::CreateWorldObject(std::string objectName, std::string materialName, std::string modelName)
+{
+	assert(materialMap.find(materialName) != materialMap.end());
+	assert(meshMap.find(modelName) != meshMap.end());
+	WorldObject obj = WorldObject(materialName, modelName, objectName);
+	objectMap.insert(std::make_pair(objectName, obj));
+}
+
 void ResourceCreator::DestroyCachingResource()
 {
 	shaderMap.clear();
 	imageMap.clear();
 	meshDataMap.clear();
+	meshMap.clear();
 	attachmentMap.clear();
 }
 

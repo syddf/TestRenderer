@@ -19,13 +19,15 @@ public:
 	static IImage::ImagePtr CreateImageFromFile(std::string imageFile);
 	static IBuffer::BufferPtr CreateVertexBuffer(char* bufferData, UInt32 bufferSize);
 	static IBuffer::BufferPtr CreateIndexBuffer(char* bufferData, UInt32 bufferSize);
-	static VulkanMaterial::MaterialPtr CreateMaterial(std::string vertexShader, std::string fragmentShader);
-	static IMesh::MeshPtr CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex);
+	static VulkanMaterial::MaterialPtr CreateMaterial(std::string materialName, std::string vertexShader, std::string fragmentShader);
+	static IMesh::MeshPtr CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex, std::string modelName);
 	static VulkanAttachment::AttachmentPtr CreateDepthStencilAttachment(std::string name, int width, int height);
 	static VulkanAttachment::AttachmentPtr CreateColorAttachment(std::string name, int width, int height);
 	static VulkanAttachment::AttachmentPtr RenameAttachment(std::string originName, std::string anotherName);
+	static VulkanAttachment::AttachmentPtr GetAttachment(std::string attachName);
 	static VulkanShader::VulkanShaderPtr CreateShaderFromFile(std::string shaderFile);
 	static TextureDimension GetTextureDimension(TextureTypeEnum texType);
+	static void CreateWorldObject(std::string objectName, std::string materialName, std::string modelName);
 	static TextureFormat GetImageImportDataFormat(int channel)
 	{
 		if (channel == 3)

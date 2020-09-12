@@ -12,6 +12,7 @@ public:
 public:
 	void CreateBuffer(BufferDesc desc);
 	char* GetGPUBufferHandleAddress();
+	VkDeviceMemory GetGPUBufferMemory() { return mBufferMemory; }
 	int GetBufferSize() { return mBufferSize; };
 
 private:

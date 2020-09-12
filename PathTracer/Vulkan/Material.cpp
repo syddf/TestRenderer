@@ -3,6 +3,17 @@
 extern VkDevice gVulkanDevice;
 extern UInt32 gSwapChainImageCount;
 
+template<typename T>
+void UpdateConstantBufferParam(int frameIndex, int offset, IBuffer::BufferPtr buffer, T& value)
+{
+	char* data;
+	auto memory = std::dynamic_pointer_cast<VulkanBuffer>(buffer)->GetGPUBufferMemory();
+	vkMapMemory(gVulkanDevice, memory, offset, sizeof(T), 0, &((void*)data));
+	memcpy(data, &value, sizeof(T));
+	vkUnmapMemory(gVulkanDevice, memory);
+}
+
+
 VulkanMaterial::VulkanMaterial(VulkanMaterialShader materialShader)
 {
 	mShader = materialShader;
@@ -14,6 +25,8 @@ VulkanMaterial::VulkanMaterial(VulkanMaterialShader materialShader)
 	WriteDescSet();
 
 	mMaterialMode = MaterialMode::Normal;
+	mConstantBufferDirty.resize(gSwapChainImageCount, false);
+	mImageDirty.resize(gSwapChainImageCount, false);
 }
 
 VulkanMaterial::~VulkanMaterial()
@@ -264,58 +277,72 @@ void VulkanMaterial::WriteDescSet()
 {
 	for (int frameIndex = 0; frameIndex < gSwapChainImageCount; frameIndex++)
 	{
-		int startIndex = frameIndex * mVKDescSetLayoutVec.size();
-		auto& uniformBufferMap = mMaterialUniformBuffer[frameIndex];
-		std::vector<VkWriteDescriptorSet> descriptorSetWrite;
-		for (auto set : uniformBufferMap)
+		WriteDescSet(frameIndex);
+	}
+}
+
+void VulkanMaterial::WriteDescSet(int frameIndex)
+{
+	int startIndex = frameIndex * mVKDescSetLayoutVec.size();
+	auto& uniformBufferMap = mMaterialUniformBuffer[frameIndex];
+	std::vector<VkWriteDescriptorSet> descriptorSetWrite;
+	for (auto set : uniformBufferMap)
+	{
+		int setInd = set.first;
+		for (auto binding : set.second)
 		{
-			int setInd = set.first;
-			for (auto binding : set.second)
-			{
-				int bindInd = binding.first;
-				auto& uniformBuffer = binding.second;
-				VkDescriptorBufferInfo descBufferInfo = {};
-				descBufferInfo.buffer = *reinterpret_cast<VkBuffer*>(uniformBuffer->GetGPUBufferHandleAddress());
-				descBufferInfo.offset = 0;
-				descBufferInfo.range = uniformBuffer->GetBufferSize();
-
-				VkWriteDescriptorSet descriptorWrite = {};
-				descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptorWrite.dstSet = mVKDescSetVec[setInd + startIndex];
-				descriptorWrite.dstBinding = bindInd;
-				descriptorWrite.dstArrayElement = 0;
-				descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				descriptorWrite.descriptorCount = 1;
-				descriptorWrite.pBufferInfo = &descBufferInfo;
-				descriptorWrite.pImageInfo = nullptr;
-				descriptorWrite.pTexelBufferView = nullptr;
-
-				descriptorSetWrite.push_back(descriptorWrite);
-			}
-		}
-
-		for (auto imageParam : mParams.ImageParams)
-		{
-			IImage::ImagePtr image = ResourceCreator::CreateImageFromFile(imageParam.second.Value);
-			VkDescriptorImageInfo imageInfo = {};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = *((VkImageView*)image->GetGPUImageViewHandleAddress());
-			imageInfo.sampler = *((VkSampler*)image->GetSamplerHandleAddress());
+			int bindInd = binding.first;
+			auto& uniformBuffer = binding.second;
+			VkDescriptorBufferInfo descBufferInfo = {};
+			descBufferInfo.buffer = *reinterpret_cast<VkBuffer*>(uniformBuffer->GetGPUBufferHandleAddress());
+			descBufferInfo.offset = 0;
+			descBufferInfo.range = uniformBuffer->GetBufferSize();
 
 			VkWriteDescriptorSet descriptorWrite = {};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = mVKDescSetVec[imageParam.second.Set + startIndex];
-			descriptorWrite.dstBinding = imageParam.second.Binding;
+			descriptorWrite.dstSet = mVKDescSetVec[setInd + startIndex];
+			descriptorWrite.dstBinding = bindInd;
 			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pBufferInfo = nullptr;
-			descriptorWrite.pImageInfo = &imageInfo;
+			descriptorWrite.pBufferInfo = &descBufferInfo;
+			descriptorWrite.pImageInfo = nullptr;
 			descriptorWrite.pTexelBufferView = nullptr;
+
 			descriptorSetWrite.push_back(descriptorWrite);
 		}
-		vkUpdateDescriptorSets(gVulkanDevice, descriptorSetWrite.size(), descriptorSetWrite.data(), 0, nullptr);
 	}
+
+	for (auto imageParam : mParams.ImageParams)
+	{
+		IImage::ImagePtr image;
+		if (imageParam.second.Attachment)
+		{
+			auto attach = ResourceCreator::GetAttachment(imageParam.second.Value);
+			image = attach->GetImage(frameIndex);
+		}
+		else
+		{
+			image = ResourceCreator::CreateImageFromFile(imageParam.second.Value);
+		}
+		VkDescriptorImageInfo imageInfo = {};
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = *((VkImageView*)image->GetGPUImageViewHandleAddress());
+		imageInfo.sampler = *((VkSampler*)image->GetSamplerHandleAddress());
+
+		VkWriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = mVKDescSetVec[imageParam.second.Set + startIndex];
+		descriptorWrite.dstBinding = imageParam.second.Binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pBufferInfo = nullptr;
+		descriptorWrite.pImageInfo = &imageInfo;
+		descriptorWrite.pTexelBufferView = nullptr;
+		descriptorSetWrite.push_back(descriptorWrite);
+	}
+	vkUpdateDescriptorSets(gVulkanDevice, descriptorSetWrite.size(), descriptorSetWrite.data(), 0, nullptr);
 }
 
 VkPipelineInputAssemblyStateCreateInfo VulkanMaterial::GetInputAssemblyStateCreateInfo()
@@ -370,4 +397,87 @@ VkDescriptorSet* VulkanMaterial::GetDescriptorSet(int frameIndex, int & descCoun
 {
 	descCount = mVKDescSetLayoutVec.size();
 	return &mVKDescSetVec[frameIndex * descCount];
+}
+
+void VulkanMaterial::SetFloat4(std::string paramName, Vec4 value)
+{
+	assert(mParams.Vec4Params.find(paramName) != mParams.Vec4Params.end());
+	mParams.Vec4Params[paramName].Value = value;
+	mConstantBufferDirty.resize(gSwapChainImageCount, true);
+}
+
+void VulkanMaterial::SetFloat3(std::string paramName, Vec3 value)
+{
+	assert(mParams.Vec3Params.find(paramName) != mParams.Vec3Params.end());
+	mParams.Vec3Params[paramName].Value = value;
+	mConstantBufferDirty.resize(gSwapChainImageCount, true);
+}
+
+void VulkanMaterial::SetFloat(std::string paramName, float value)
+{
+	assert(mParams.FloatParams.find(paramName) != mParams.FloatParams.end());
+	mParams.FloatParams[paramName].Value = value;
+	mConstantBufferDirty.resize(gSwapChainImageCount, true);
+}
+
+void VulkanMaterial::SetMatrix(std::string paramName, Matrix & matrix)
+{
+	assert(mParams.MatrixParams.find(paramName) != mParams.MatrixParams.end());
+	mParams.MatrixParams[paramName].Value = matrix;
+	mConstantBufferDirty.resize(gSwapChainImageCount, true);
+}
+
+void VulkanMaterial::SetImage(std::string paramName, std::string value)
+{
+	assert(mParams.ImageParams.find(paramName) != mParams.ImageParams.end());
+	mParams.ImageParams[paramName].Value = value;
+	mParams.ImageParams[paramName].Attachment = false;
+	mImageDirty.resize(gSwapChainImageCount, true);
+}
+
+void VulkanMaterial::BindImageAttachment(std::string paramName, std::string value)
+{
+	assert(mParams.ImageParams.find(paramName) != mParams.ImageParams.end());
+	mParams.ImageParams[paramName].Value = value;
+	mParams.ImageParams[paramName].Attachment = true;
+	mImageDirty.resize(gSwapChainImageCount, true);
+}
+
+void VulkanMaterial::Update(int frameIndex)
+{
+	if (mConstantBufferDirty[frameIndex])
+	{
+		mConstantBufferDirty[frameIndex] = false;
+		for (auto param : mParams.Vec4Params)
+			UpdateConstantBufferParam(frameIndex, param.second.Offset, mMaterialUniformBuffer[frameIndex][param.second.Set][param.second.Binding], param.second.Value);
+		for (auto param : mParams.Vec3Params)
+			UpdateConstantBufferParam(frameIndex, param.second.Offset, mMaterialUniformBuffer[frameIndex][param.second.Set][param.second.Binding], param.second.Value);
+		for (auto param : mParams.FloatParams)
+			UpdateConstantBufferParam(frameIndex, param.second.Offset, mMaterialUniformBuffer[frameIndex][param.second.Set][param.second.Binding], param.second.Value);
+		for (auto param : mParams.MatrixParams)
+			UpdateConstantBufferParam(frameIndex, param.second.Offset, mMaterialUniformBuffer[frameIndex][param.second.Set][param.second.Binding], param.second.Value);
+	}
+	if (mImageDirty[frameIndex])
+	{
+		mImageDirty[frameIndex] = false;
+		WriteDescSet(frameIndex);
+	}
+}
+
+void VulkanMaterial::TranslateImageLayout(int frameIndex, VkCommandBuffer commandBuffer)
+{
+	for (auto param : mParams.ImageParams)
+	{
+		if (param.second.Attachment)
+		{
+			auto attach = ResourceCreator::GetAttachment(param.second.Value);
+			auto image = attach->GetImage(frameIndex);
+			image->TranslateImageLayout(commandBuffer, VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0);
+		}
+		else
+		{
+			IImage::ImagePtr image = ResourceCreator::CreateImageFromFile(param.second.Value);
+			std::dynamic_pointer_cast<VulkanImage>(image)->TranslateImageLayout(commandBuffer, VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0);
+		}
+	}
 }
