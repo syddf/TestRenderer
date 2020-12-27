@@ -32,20 +32,20 @@ VkVertexInputBindingDescription VulkanShader::GetInputBindingDescription(std::ve
 	attributeDescVec.resize(mVulkanShaderParams.InputVec.size());
 	auto GetInputParamSize = [&](const ShaderInputInfo& inputInfo)->int
 	{
-		if (inputInfo.name == "float+4")
+		if (inputInfo.format == "float+4")
 			return 4 * sizeof(float);
-		else if (inputInfo.name == "float+3")
+		else if (inputInfo.format == "float+3")
 			return 3 * sizeof(float);
-		else if (inputInfo.name == "float+2")
+		else if (inputInfo.format == "float+2")
 			return 2 * sizeof(float);
 	};
 	auto GetInputParamFormat = [&](const ShaderInputInfo& inputInfo)->VkFormat
 	{
-		if (inputInfo.name == "float+4")
+		if (inputInfo.format == "float+4")
 			return VK_FORMAT_R32G32B32A32_SFLOAT;
-		if (inputInfo.name == "float+3")
+		if (inputInfo.format == "float+3")
 			return VK_FORMAT_R32G32B32_SFLOAT;
-		if (inputInfo.name == "float+2")
+		if (inputInfo.format == "float+2")
 			return VK_FORMAT_R32G32_SFLOAT;
 	};
 	int totalSize = 0;

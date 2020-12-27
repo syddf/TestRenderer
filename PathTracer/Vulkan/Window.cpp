@@ -30,12 +30,14 @@ void VulkanWindow::InitializeSurface(VkInstance instance)
 	VKFUNC(glfwCreateWindowSurface(instance, mWindow, nullptr, &mSurface), "Failed To Create Window Surface.");
 }
 
-void VulkanWindow::MainLoop()
+bool VulkanWindow::MainLoop()
 {
-	while (!glfwWindowShouldClose(mWindow))
+	bool close = glfwWindowShouldClose(mWindow);
+	if (!close)
 	{
 		glfwPollEvents();
 	}
+	return close;
 }
 
 bool VulkanWindow::InitPresentFamily(VkPhysicalDevice physicalDevice)

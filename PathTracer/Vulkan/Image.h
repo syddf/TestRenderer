@@ -1,10 +1,12 @@
 #pragma once
 #include "VulkanCommon.h"
+#include "ImageView.h"
 
 class VulkanImage : public IImage
 {
 public:
 	VulkanImage(ImageDesc desc);
+	VulkanImage(VkImage image, VulkanImageView::ImageViewPtr imageView);
 	~VulkanImage();
 
 public:

@@ -12,7 +12,7 @@ public:
 public:
 	void CreateGLFWWindow();
 	void InitializeSurface(VkInstance instance);
-	void MainLoop();
+	bool MainLoop();
 	bool InitPresentFamily(VkPhysicalDevice physicalDevice);
 
 	VkSurfaceKHR GetVulkanSurface() const { return mSurface;  }

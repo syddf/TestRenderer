@@ -12,6 +12,7 @@ public:
 public:
 	int AcquireImage();
 	void PresentFrame(int frameIndex, std::vector<VkSemaphore>& renderFinishSemaphore);
+	VkFence GetCurrentFrameRenderFinishFence() const { return mRenderFinishFence[mCurrentFrame]; }
 
 private:
 	int mCurrentFrame;
@@ -20,4 +21,5 @@ private:
 	std::array<VkSemaphore, 3> mAcquireImageSemaphore;
 	std::array<VkSemaphore, 3> mRenderFinishSemaphore;
 	std::array<VkFence, 3> mWaitFence;
+	std::array<VkFence, 3> mRenderFinishFence;
 };

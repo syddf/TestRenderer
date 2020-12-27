@@ -15,6 +15,9 @@ public:
 	UInt32 GetComputeFamily() const { return mComputeQueueFamily; }
 	UInt32 GetTransferFamily() const { return mTransferQueueFamily; }
 
+	VkQueue GetGraphicsQueue() const { return mGraphicsQueue; }
+	void FreeCommandPool();
+
 private:
 	void InitializeInstance();
 	void InitializePhysicalDevice();

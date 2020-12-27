@@ -25,6 +25,7 @@ public:
 	static VulkanAttachment::AttachmentPtr CreateColorAttachment(std::string name, int width, int height);
 	static VulkanAttachment::AttachmentPtr RenameAttachment(std::string originName, std::string anotherName);
 	static VulkanAttachment::AttachmentPtr GetAttachment(std::string attachName);
+	static void SaveAttachment(std::string attachmentName, VulkanAttachment::AttachmentPtr attachmentPtr);
 	static VulkanShader::VulkanShaderPtr CreateShaderFromFile(std::string shaderFile);
 	static TextureDimension GetTextureDimension(TextureTypeEnum texType);
 	static void CreateWorldObject(std::string objectName, std::string materialName, std::string modelName);

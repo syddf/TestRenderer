@@ -7,11 +7,14 @@ VulkanPresentEngine::VulkanPresentEngine(VkSwapchainKHR swapChain, VkQueue prese
 {
 	mSwapChain = swapChain;
 	mPresentQueue = presentQueue;
+	mCurrentFrame = 0;
 	for (int i = 0; i < 3; i++)
 	{
 		VkFenceCreateInfo fenceInfo = {};
 		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		VKFUNC(vkCreateFence(gVulkanDevice, &fenceInfo, nullptr, &mWaitFence[i]), "Create Fence Failed.");
+		fenceInfo.flags = VkFenceCreateFlagBits::VK_FENCE_CREATE_SIGNALED_BIT;
+		VKFUNC(vkCreateFence(gVulkanDevice, &fenceInfo, nullptr, &mRenderFinishFence[i]), "Create Fence Failed.");
 
 		VkSemaphoreCreateInfo semaInfo = {};
 		semaInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -33,6 +36,8 @@ VulkanPresentEngine::~VulkanPresentEngine()
 int VulkanPresentEngine::AcquireImage()
 {
 	UInt32 imageIndex;
+	vkWaitForFences(gVulkanDevice, 1, &mRenderFinishFence[mCurrentFrame], VK_TRUE, UINT64_MAX);
+	vkResetFences(gVulkanDevice, 1, &mRenderFinishFence[mCurrentFrame]);
 	vkAcquireNextImageKHR(gVulkanDevice, mSwapChain, UINT64_MAX, mAcquireImageSemaphore[mCurrentFrame], mWaitFence[mCurrentFrame], &imageIndex);
 	vkWaitForFences(gVulkanDevice, 1, &mWaitFence[mCurrentFrame], VK_TRUE, UINT64_MAX);
 	vkResetFences(gVulkanDevice, 1, &mWaitFence[mCurrentFrame]);
@@ -60,11 +65,12 @@ void VulkanPresentEngine::PresentFrame(int frameIndex, std::vector<VkSemaphore>&
 	}
 	else
 	{
+		// 2 frame before has been acquired. 1 frame before has been present.
 		int nextFrame = (mCurrentFrame + 1) % 3;
 		std::vector<VkSemaphore> waitSemaphoreVec = renderFinishSemaphore;
 		waitSemaphoreVec.push_back(mAcquireImageSemaphore[nextFrame]);
-		presentInfo.waitSemaphoreCount = renderFinishSemaphore.size();
-		presentInfo.pWaitSemaphores = renderFinishSemaphore.data();
+		presentInfo.waitSemaphoreCount = waitSemaphoreVec.size();
+		presentInfo.pWaitSemaphores = waitSemaphoreVec.data();
 		vkQueuePresentKHR(mPresentQueue, &presentInfo);
 	}
 	mCurrentFrame = (mCurrentFrame + 1) % 3;

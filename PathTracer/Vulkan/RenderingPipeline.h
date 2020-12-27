@@ -13,7 +13,7 @@ public:
     void GenerateRenderingGraph(std::vector<RenderingPipelineNodeDesc>& nodesVec);
 	
 	void TopologySort(std::vector<RenderingPipelineNodeDesc>& nodesVec, std::vector<std::vector<int>> dependingMap);
-	void SubmitRenderingCommands(int index, VkQueue sgraphicsQueue);
+	std::vector<VkSemaphore> SubmitRenderingCommands(int index, VkQueue sgraphicsQueue, VkFence renderFinishFence);
 
 private:
 	std::map<std::string, std::vector<int>> mAttachmentAffectNodesMap;

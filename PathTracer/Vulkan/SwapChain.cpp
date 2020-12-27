@@ -1,5 +1,5 @@
 #include "SwapChain.h"
-
+#include "ResourceCreator.h"
 extern UInt32 gScreenWidth;
 extern UInt32 gScreenHeight;
 UInt32 gSwapChainImageCount = 0;
@@ -127,4 +127,8 @@ void VulkanSwapChain::InitializeSwapChain(VkPhysicalDevice physicalDevice, VkSur
 
 		mSwapChainImageViews.push_back(std::make_shared<VulkanImageView>(desc));
 	}
+
+	mSwapChainImageAttachment = std::make_shared<VulkanAttachment>(mSwapChainImages, mSwapChainImageViews);
+	ResourceCreator::SaveAttachment("SwapChainImage", mSwapChainImageAttachment);
+
 }

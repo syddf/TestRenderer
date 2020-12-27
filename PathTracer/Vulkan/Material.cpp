@@ -94,6 +94,7 @@ void VulkanMaterial::MergeShaderParams()
 					auto dimensionStr = param.Format.substr(dimensionStrPos + 1);
 					imageParam.ImageDimension = GetTextureDimension(dimensionStr);
 					imageParam.ArrayIndex = GetTextureArrayIndex(param.Name);
+					imageParam.Attachment = false;
 					mParams.ImageParams[param.Name] = imageParam;
 				}
 			}
@@ -111,7 +112,7 @@ void VulkanMaterial::CreateVulkanDescLayout()
 	std::map<int, std::vector<VkDescriptorSetLayoutBinding>> descSetLayoutMap;
 	std::map<int, std::vector<int>> descBindingSizeMap;
 
-	auto AddShader = [&](VulkanShader::VulkanShaderPtr shaderPtr, VkPipelineStageFlagBits stageFlag)->void
+	auto AddShader = [&](VulkanShader::VulkanShaderPtr shaderPtr, VkShaderStageFlagBits stageFlag)->void
 	{
 		if (shaderPtr == nullptr)
 			return;
@@ -156,8 +157,8 @@ void VulkanMaterial::CreateVulkanDescLayout()
 		}
 	};
 
-	AddShader(std::static_pointer_cast<VulkanShader>(mShader.VertexShader), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
-	AddShader(std::static_pointer_cast<VulkanShader>(mShader.FragmentShader), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+	AddShader(std::static_pointer_cast<VulkanShader>(mShader.VertexShader), VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT);
+	AddShader(std::static_pointer_cast<VulkanShader>(mShader.FragmentShader), VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	CreateUniformBuffers(descSetLayoutMap, descBindingSizeMap);
 
@@ -167,7 +168,6 @@ void VulkanMaterial::CreateVulkanDescLayout()
 		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		layoutInfo.bindingCount = bindingVec.second.size();
 		layoutInfo.pBindings = bindingVec.second.data();
-
 		VkDescriptorSetLayout descLayout;
 		vkCreateDescriptorSetLayout(gVulkanDevice, &layoutInfo, nullptr, &descLayout);
 		mVKDescSetLayoutVec.push_back(descLayout);
@@ -211,6 +211,7 @@ void VulkanMaterial::CreatePushConstantRange()
 		auto shaderParams = shaderPtr->GetShaderParams();
 		VkPushConstantRange range = {};
 		range.stageFlags = stageFlag;
+		if (shaderParams.PushConstantVec.empty()) return;
 		for (auto pushConstantInfo : shaderParams.PushConstantVec)
 		{
 			range.offset = pushConstantInfo.offset;
@@ -243,7 +244,7 @@ void VulkanMaterial::CreateShaderStageInfo()
 		shaderStageCreateInfo.module = *reinterpret_cast<VkShaderModule*>(mShader.VertexShader->GetGPUShaderHandleAddress());
 		mShaderStageInfoVec.push_back(shaderStageCreateInfo);
 	}
-	else if (mShader.FragmentShader)
+	if (mShader.FragmentShader)
 	{
 		shaderStageCreateInfo.stage = VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
 		shaderStageCreateInfo.module = *reinterpret_cast<VkShaderModule*>(mShader.FragmentShader->GetGPUShaderHandleAddress());
@@ -403,28 +404,32 @@ void VulkanMaterial::SetFloat4(std::string paramName, Vec4 value)
 {
 	assert(mParams.Vec4Params.find(paramName) != mParams.Vec4Params.end());
 	mParams.Vec4Params[paramName].Value = value;
-	mConstantBufferDirty.resize(gSwapChainImageCount, true);
+	for (int i = 0; i < mConstantBufferDirty.size(); i++)
+		mConstantBufferDirty[i] = true;
 }
 
 void VulkanMaterial::SetFloat3(std::string paramName, Vec3 value)
 {
 	assert(mParams.Vec3Params.find(paramName) != mParams.Vec3Params.end());
 	mParams.Vec3Params[paramName].Value = value;
-	mConstantBufferDirty.resize(gSwapChainImageCount, true);
+	for (int i = 0; i < mConstantBufferDirty.size(); i++)
+		mConstantBufferDirty[i] = true;
 }
 
 void VulkanMaterial::SetFloat(std::string paramName, float value)
 {
 	assert(mParams.FloatParams.find(paramName) != mParams.FloatParams.end());
 	mParams.FloatParams[paramName].Value = value;
-	mConstantBufferDirty.resize(gSwapChainImageCount, true);
+	for (int i = 0; i < mConstantBufferDirty.size(); i++)
+		mConstantBufferDirty[i] = true;
 }
 
 void VulkanMaterial::SetMatrix(std::string paramName, Matrix & matrix)
 {
 	assert(mParams.MatrixParams.find(paramName) != mParams.MatrixParams.end());
 	mParams.MatrixParams[paramName].Value = matrix;
-	mConstantBufferDirty.resize(gSwapChainImageCount, true);
+	for (int i = 0; i < mConstantBufferDirty.size(); i++)
+		mConstantBufferDirty[i] = true;
 }
 
 void VulkanMaterial::SetImage(std::string paramName, std::string value)

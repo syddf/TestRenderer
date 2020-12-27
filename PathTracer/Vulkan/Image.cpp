@@ -12,11 +12,23 @@ VulkanImage::VulkanImage(ImageDesc desc)
 	CreateImage(desc);
 }
 
+VulkanImage::VulkanImage(VkImage image, VulkanImageView::ImageViewPtr imageView)
+{
+	mImageLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
+	mImage = image;
+	mImageView = imageView;
+	mImageMemory = VK_NULL_HANDLE;
+	mSampler = VK_NULL_HANDLE;
+}
+
 VulkanImage::~VulkanImage()
 {
-	vkFreeMemory(gVulkanDevice, mImageMemory, nullptr);
-	vkDestroyImage(gVulkanDevice, mImage, nullptr);
-	vkDestroySampler(gVulkanDevice, mSampler, nullptr);
+	if (mImageMemory != VK_NULL_HANDLE)
+	{
+		vkFreeMemory(gVulkanDevice, mImageMemory, nullptr);
+		vkDestroyImage(gVulkanDevice, mImage, nullptr);
+		vkDestroySampler(gVulkanDevice, mSampler, nullptr);
+	}
 }
 
 void VulkanImage::CreateImage(ImageDesc desc)
@@ -136,6 +148,13 @@ void VulkanImage::TranslateImageLayout(VkCommandBuffer commandBuffer, VkImageLay
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	}
+	else if (barrier.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && barrier.newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	}
 	else if (barrier.oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && barrier.newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 	{

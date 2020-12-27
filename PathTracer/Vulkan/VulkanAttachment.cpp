@@ -11,6 +11,16 @@ VulkanAttachment::VulkanAttachment(ImageDesc desc, bool bIsColor)
 	}
 }
 
+VulkanAttachment::VulkanAttachment(std::vector<VkImage>& imageVec, std::vector<VulkanImageView::ImageViewPtr>& imageViewVec)
+{
+	assert(imageVec.size() == gSwapChainImageCount);
+	mImages.resize(gSwapChainImageCount);	
+	for (int i = 0 ; i < imageVec.size(); i ++)
+	{
+		mImages[i] = std::make_shared<VulkanImage>(imageVec[i], imageViewVec[i]);
+	}
+}
+
 VulkanAttachment::~VulkanAttachment()
 {
 }

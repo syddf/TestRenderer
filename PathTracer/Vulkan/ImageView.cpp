@@ -8,6 +8,11 @@ VulkanImageView::VulkanImageView(ImageViewDesc desc)
 	CreateImageView(desc);
 }
 
+VulkanImageView::VulkanImageView(VkImageView imageView)
+{
+	mImageView = imageView;
+}
+
 VulkanImageView::~VulkanImageView()
 {
 	vkDestroyImageView(gVulkanDevice, mImageView, nullptr);

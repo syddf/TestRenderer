@@ -19,7 +19,7 @@ class IWindow
 {
 public:
 	virtual ~IWindow() {};
-	virtual void MainLoop() = 0;
+	virtual bool MainLoop() = 0;
 };
 
 class ISwapChain
@@ -80,7 +80,7 @@ public:
 
 public:
 	virtual ~IRenderingPipelineGraph() {};
-	virtual void GenerateRenderingGraph(std::vector<NodePtr>& nodesVec) = 0;
+	virtual void GenerateRenderingGraph(std::vector<RenderingPipelineNodeDesc>& nodesVec) = 0;
 };
 
 class ITranslationEngine

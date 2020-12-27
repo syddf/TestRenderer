@@ -22,6 +22,10 @@ VulkanPipelineNode::VulkanPipelineNode(const RenderingPipelineNodeDesc & desc)
 	for (int i = 0; i < gSwapChainImageCount; i++)
 		mCommandBuffer.push_back(gPipelineGraphicsPrimaryCommandBufferPool->AllocateCommandBuffer(true));
 
+	for (auto renderingNodeDesc : desc.RenderingNodeDescVec)
+	{
+		AddRenderingNodes(renderingNodeDesc);
+	}
 }
 
 VulkanPipelineNode::~VulkanPipelineNode()
@@ -42,7 +46,9 @@ void VulkanPipelineNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc & 
 {
 	std::vector<VkAttachmentDescription> attachmentDesc;
 	std::vector<VkAttachmentReference> colorAttachmentReference;
-	VkAttachmentReference depthAttachmentReference;
+	VkAttachmentReference depthAttachmentReference = {};
+	bool hasDepth = false;
+
 	attachmentDesc.resize(desc.FrameBufferLayoutDesc.AttachmentDesc.size());
 
 	mColorAttachmentCount = 0;
@@ -71,7 +77,7 @@ void VulkanPipelineNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc & 
 			mClearValue.push_back(clearValue);
 		}
 		attachmentDesc[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		if (desc.AttachToWindowNode)
+//		if (desc.)
 		{
 			if (desc.FrameBufferLayoutDesc.AttachmentDesc[i].Usage & TextureUsageBits::TU_COLOR_ATTACHMENT)
 			{
@@ -94,6 +100,7 @@ void VulkanPipelineNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc & 
 		}
 		else if (desc.FrameBufferLayoutDesc.AttachmentDesc[i].Usage == TextureUsageBits::TU_DEPTH_STENCIL)
 		{
+			hasDepth = true;
 			depthAttachmentReference.attachment = i;
 			depthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		}
@@ -103,16 +110,28 @@ void VulkanPipelineNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc & 
 	subpassDesc.pipelineBindPoint = GetVKBindPoint(desc.BindPoint);
 	subpassDesc.pColorAttachments = colorAttachmentReference.data();
 	subpassDesc.colorAttachmentCount = colorAttachmentReference.size();
-	subpassDesc.pDepthStencilAttachment = &depthAttachmentReference;
+	subpassDesc.pDepthStencilAttachment = hasDepth ? &depthAttachmentReference : nullptr;
+
+	VkSubpassDependency dependency = {};
+	dependency.dependencyFlags = VkDependencyFlagBits::VK_DEPENDENCY_BY_REGION_BIT;
+	dependency.srcSubpass = 0;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 	VkRenderPassCreateInfo renderPassCreateInfo = {};
 	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassCreateInfo.attachmentCount = desc.FrameBufferLayoutDesc.AttachmentDesc.size();
 	renderPassCreateInfo.pAttachments = attachmentDesc.data();
 	renderPassCreateInfo.pSubpasses = &subpassDesc;
+	renderPassCreateInfo.subpassCount = 1;
+	renderPassCreateInfo.dependencyCount = 1;
+	renderPassCreateInfo.pDependencies = &dependency;
 
 	VKFUNC(vkCreateRenderPass(gVulkanDevice, &renderPassCreateInfo, nullptr, &mVKRenderPass), "Create Render Pass Failed.");
-
+	mFrameBuffer.resize(gSwapChainImageCount);
 	for (size_t i = 0; i < desc.FrameBufferDesc.AttachmentName.size(); i++)
 	{
 		auto attach = attachmentMap[desc.FrameBufferDesc.AttachmentName[i]];
@@ -134,6 +153,7 @@ void VulkanPipelineNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc & 
 		frameBufferInfo.pAttachments = attachmentView.data();
 		frameBufferInfo.attachmentCount = attachmentView.size();
 		frameBufferInfo.layers = 1;
+		frameBufferInfo.renderPass = mVKRenderPass;
 
 		VKFUNC(vkCreateFramebuffer(gVulkanDevice, &frameBufferInfo, nullptr, &mFrameBuffer[frameIndex]), "Create Frame Buffer Failed.");
 	}
@@ -184,17 +204,21 @@ VkCommandBuffer VulkanPipelineNode::RecordCommandBuffer(int frameIndex)
 	renderPassBeginInfo.pClearValues = mClearValue.data();
 	renderPassBeginInfo.renderArea.offset = {0, 0};
 	renderPassBeginInfo.renderArea.extent = {gScreenWidth, gScreenHeight};
+	
 	auto& commandBuffer = mCommandBuffer[frameIndex];
+	gPipelineGraphicsPrimaryCommandBufferPool->BeginCommandBuffer(commandBuffer);
+
+	VkSubpassContents subpassContents = mRenderingNodes.empty() ? VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE : VkSubpassContents::VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS;
+	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, subpassContents);
 	std::vector<VkCommandBuffer> childCommand;
 	childCommand.reserve(mRenderingNodes.size());
 	for (int i = 0; i < mRenderingNodes.size(); i++)
 		childCommand.push_back(mRenderingNodes[i]->RecordCommandBuffer(frameIndex, renderPassBeginInfo));
-	gPipelineGraphicsPrimaryCommandBufferPool->BeginCommandBuffer(commandBuffer);
-	for (auto attach : mAttachment)
+	if (childCommand.size())
 	{
-		attach->TranslateAttachmentImage(frameIndex, commandBuffer);
+		vkCmdExecuteCommands(commandBuffer, childCommand.size(), childCommand.data());
 	}
-	vkCmdExecuteCommands(commandBuffer, childCommand.size(), childCommand.data());
+	vkCmdEndRenderPass(commandBuffer);
 	gPipelineGraphicsPrimaryCommandBufferPool->EndCommandBuffer(commandBuffer);
 	return mCommandBuffer[frameIndex];
 }
@@ -268,6 +292,7 @@ void VulkanRenderingNode::GenerateCommandBuffer()
 	mCommandBuffer.reserve(gSwapChainImageCount);
 	for(int i = 0; i < gSwapChainImageCount; i ++)
 		mCommandBuffer.push_back(gPipelineGraphicsSecondaryCommandBufferPool->AllocateCommandBuffer(false));
+	mDirty.resize(3, true);
 }
 
 VkCommandBuffer VulkanRenderingNode::RecordCommandBuffer(int frameIndex, VkRenderPassBeginInfo renderPassInfo)
@@ -275,11 +300,11 @@ VkCommandBuffer VulkanRenderingNode::RecordCommandBuffer(int frameIndex, VkRende
 	auto commandBuffer = mCommandBuffer[frameIndex];
 	if (mDirty[frameIndex] == false)
 		return commandBuffer;
-	gPipelineGraphicsSecondaryCommandBufferPool->BeginCommandBuffer(commandBuffer);
-	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+	gPipelineGraphicsSecondaryCommandBufferPool->BeginSecondaryCommandBuffer(commandBuffer, renderPassInfo);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline);
 	
 	VulkanMaterial* mat = reinterpret_cast<VulkanMaterial*>(mMaterialAddr);
+	mat->Update(frameIndex);
 	int descCount;
 	VkDescriptorSet* descSet = mat->GetDescriptorSet(frameIndex, descCount);
 	vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, descCount, descSet, 0, nullptr);
@@ -297,7 +322,6 @@ VkCommandBuffer VulkanRenderingNode::RecordCommandBuffer(int frameIndex, VkRende
 		vkCmdBindIndexBuffer(commandBuffer, *indBuffer, 0, indDataSize == sizeof(UInt16) ? VkIndexType::VK_INDEX_TYPE_UINT16 : VkIndexType::VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed(commandBuffer, indCount, 1, 0, 0, 0);
 	}
-	vkCmdEndRenderPass(commandBuffer);
 	gPipelineGraphicsSecondaryCommandBufferPool->EndCommandBuffer(commandBuffer);
 	return commandBuffer;
 }

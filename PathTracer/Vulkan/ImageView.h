@@ -7,6 +7,7 @@ class VulkanImageView : public IImageView
 {
 public:
 	VulkanImageView(ImageViewDesc desc);
+	VulkanImageView(VkImageView imageView);
 	~VulkanImageView();
 
 public:

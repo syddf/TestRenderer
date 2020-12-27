@@ -1,0 +1,3 @@
+D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\simpleModel.vert -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\simpleModelVert.spv
+D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\simpleModel.frag -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\simpleModelFrag.spv
+pause

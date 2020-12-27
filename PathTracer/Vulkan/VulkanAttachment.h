@@ -3,11 +3,13 @@
 #include "Image.h"
 #include "./../GraphicsAPICommon/GraphicsInterface.h"
 #include "./../GraphicsAPICommon/GraphicsStructure.h"
+#include "ImageView.h"
 
 class VulkanAttachment
 {
 public:
 	VulkanAttachment(ImageDesc desc, bool bIsColor);
+	VulkanAttachment(std::vector<VkImage>& imageVec, std::vector<VulkanImageView::ImageViewPtr>& imageViewVec);
 	~VulkanAttachment();
 	using AttachmentPtr = std::shared_ptr<VulkanAttachment>;
 

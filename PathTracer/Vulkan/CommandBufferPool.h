@@ -15,6 +15,7 @@ public:
 
 	VkCommandBuffer AllocateCommandBuffer(bool Primary);
 	void BeginCommandBuffer(VkCommandBuffer commandBuffer);
+	void BeginSecondaryCommandBuffer(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo& renderPassBeginInfo);
 	void EndCommandBuffer(VkCommandBuffer commandBuffer);
 
 private:

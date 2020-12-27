@@ -1,7 +1,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
 PROJECT(PathTracer)
-
+set(CMAKE_CXX_STANDARD 17)
 AUX_SOURCE_DIRECTORY(. SRC_LIST)
 FILE (GLOB SOURCE_LIST "./Vulkan/*.cpp" "./Vulkan/*.h")
 foreach(target ${SOURCE_LIST})
@@ -25,6 +25,8 @@ source_group("Vulkan/" FILES
 ./Vulkan/Device.cpp 
 ./Vulkan/VulkanCommon.h
 ./Vulkan/VulkanCommon.cpp
+./Vulkan/VulkanAttachment.h
+./Vulkan/VulkanAttachment.cpp
 ./Vulkan/Window.h 
 ./Vulkan/Window.cpp 
 ./Vulkan/SwapChain.h 
@@ -39,6 +41,8 @@ source_group("Vulkan/" FILES
 ./Vulkan/RenderPass.cpp
 ./Vulkan/TranslateEngine.h
 ./Vulkan/TranslateEngine.cpp
+./Vulkan/PresentEngine.h
+./Vulkan/PresentEngine.cpp
 ./Vulkan/ResourceCreator.h
 ./Vulkan/ResourceCreator.cpp
 ./Vulkan/RenderingPipeline.h

@@ -182,7 +182,7 @@ VulkanAttachment::AttachmentPtr ResourceCreator::CreateColorAttachment(std::stri
 	desc.Width = gScreenWidth;
 	desc.Height = gScreenHeight;
 	desc.MipLevels = 1;
-	desc.Format = TextureFormat::TF_R32G32B32A32SFloat;
+	desc.Format = TextureFormat::TF_B8G8R8A8SRGB;
 	desc.GenerateMipMap = true;
 	desc.ArrayLayers = 1;
 	desc.Usage = TextureUsageBits::TU_COLOR_ATTACHMENT | TextureUsageBits::TU_SHADER_RESOURCE;
@@ -205,6 +205,11 @@ VulkanAttachment::AttachmentPtr ResourceCreator::GetAttachment(std::string attac
 {
 	assert(attachmentMap.find(attachName) != attachmentMap.end());
 	return attachmentMap[attachName];
+}
+
+void ResourceCreator::SaveAttachment(std::string attachmentName, VulkanAttachment::AttachmentPtr attachmentPtr)
+{
+	attachmentMap[attachmentName] = attachmentPtr;
 }
 
 VulkanShader::VulkanShaderPtr ResourceCreator::CreateShaderFromFile(std::string shaderFile)
@@ -249,5 +254,6 @@ void ResourceCreator::DestroyCachingResource()
 	meshDataMap.clear();
 	meshMap.clear();
 	attachmentMap.clear();
+	materialMap.clear();
 }
 

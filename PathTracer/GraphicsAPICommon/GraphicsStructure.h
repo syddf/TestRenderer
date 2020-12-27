@@ -140,22 +140,25 @@ struct FrameBufferLayoutDesc
 	std::vector<AttachmentDesc> AttachmentDesc;
 };
 
+struct RenderingNodeDesc
+{
+	char* MaterialAddr;
+	std::vector<char*> ModelAddr;
+};
+
 struct RenderingPipelineNodeDesc
 {
 	FrameBufferLayoutDesc FrameBufferLayoutDesc;
 	FrameBufferDesc FrameBufferDesc;
 	std::vector<std::string> DependingAttachmentViewName;
-	std::vector<int> DependingNodeIndex;
+	std::vector<RenderingNodeDesc> RenderingNodeDescVec;
 	PipelineBindPoint BindPoint;
 	std::string NodeName;
 	bool AttachToWindowNode;
-	bool AffectOtherNode;
-};
 
-struct RenderingNodeDesc
-{
-	char* MaterialAddr;
-	std::vector<char*> ModelAddr;
+	//..
+	std::vector<int> DependingNodeIndex;
+	bool AffectOtherNode;
 };
 
 template<typename T>

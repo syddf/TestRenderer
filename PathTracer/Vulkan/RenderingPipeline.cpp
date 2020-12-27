@@ -48,6 +48,8 @@ void VulkanRenderingPipeline::GenerateRenderingGraph(std::vector<RenderingPipeli
 
 	TopologySort(nodesVec, graphEdgeMap);
 
+	mRenderingNodesVec.resize(nodesVec.size());
+	mRenderFinishSemaphore.resize(gSwapChainImageCount);
 	for (size_t i = 0; i < nodesVec.size(); i ++)
 	{
 		mRenderingNodesVec[i] = std::make_shared<VulkanPipelineNode>(nodesVec[i]);
@@ -130,8 +132,9 @@ void VulkanRenderingPipeline::TopologySort(std::vector<RenderingPipelineNodeDesc
 	nodesVec.swap(resultVec);
 }
 
-void VulkanRenderingPipeline::SubmitRenderingCommands(int frameIndex, VkQueue graphicsQueue)
+std::vector<VkSemaphore> VulkanRenderingPipeline::SubmitRenderingCommands(int frameIndex, VkQueue graphicsQueue, VkFence renderFinishFence)
 {
+	std::vector<VkSemaphore> sigSemaphore;
 	std::vector<VkSubmitInfo> submitVec;
 	submitVec.reserve(mRenderingNodesVec.size());
 	for (auto node : mRenderingNodesVec)
@@ -157,6 +160,8 @@ void VulkanRenderingPipeline::SubmitRenderingCommands(int frameIndex, VkQueue gr
 			submitInfo.signalSemaphoreCount = 1;
 		}
 		submitVec.push_back(submitInfo);
+		sigSemaphore.push_back(signalSema);
 	}
-	vkQueueSubmit(graphicsQueue, submitVec.size(), submitVec.data(), VK_NULL_HANDLE);
+	vkQueueSubmit(graphicsQueue, submitVec.size(), submitVec.data(), renderFinishFence);
+	return sigSemaphore;
 }

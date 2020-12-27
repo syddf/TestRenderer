@@ -66,8 +66,24 @@ void VulkanCommandBufferPool::BeginCommandBuffer(VkCommandBuffer commandBuffer)
 	VkCommandBufferBeginInfo commandBufferBeginInfo = {};
 	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	commandBufferBeginInfo.flags = 0;
-
 	vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+}
+
+void VulkanCommandBufferPool::BeginSecondaryCommandBuffer(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo & renderPassBeginInfo)
+{
+	VkCommandBufferInheritanceInfo inheritanceInfo = {};
+	inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+	inheritanceInfo.framebuffer = renderPassBeginInfo.framebuffer;
+	inheritanceInfo.occlusionQueryEnable = VK_FALSE;
+	inheritanceInfo.subpass = 0;
+	inheritanceInfo.renderPass = renderPassBeginInfo.renderPass;
+
+	VkCommandBufferBeginInfo commandBufferBeginInfo = {};
+	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+	commandBufferBeginInfo.pInheritanceInfo = &inheritanceInfo;
+	vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+
 }
 
 void VulkanCommandBufferPool::EndCommandBuffer(VkCommandBuffer commandBuffer)

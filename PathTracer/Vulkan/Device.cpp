@@ -42,9 +42,6 @@ VulkanDevice::VulkanDevice()
 VulkanDevice::~VulkanDevice()
 {
 	delete gTranslateEngine;
-	delete gGraphicsCommonCommandBufferPool;
-	delete gPipelineGraphicsSecondaryCommandBufferPool;
-	delete gPipelineGraphicsPrimaryCommandBufferPool;
 
 	vkDestroyDevice(mDevice, nullptr);
 
@@ -58,6 +55,13 @@ VulkanDevice::~VulkanDevice()
 	}
 
 	vkDestroyInstance(mInstance, nullptr);
+}
+
+void VulkanDevice::FreeCommandPool()
+{
+	delete gGraphicsCommonCommandBufferPool;
+	delete gPipelineGraphicsSecondaryCommandBufferPool;
+	delete gPipelineGraphicsPrimaryCommandBufferPool;
 }
 
 void VulkanDevice::InitializeInstance()
