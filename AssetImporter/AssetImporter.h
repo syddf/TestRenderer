@@ -11,7 +11,7 @@ class AssetImporter
 public:
 	AssetType GetAssetType(const std::string SuffixName)
 	{
-		if (SuffixName == "fbx")
+		if (SuffixName == "fbx" || SuffixName == "obj")
 		{
 			return AssetType::SceneData;
 		}

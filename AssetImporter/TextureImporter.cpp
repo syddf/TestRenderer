@@ -13,6 +13,9 @@ TextureImporter::~TextureImporter()
 
 bool TextureImporter::Load2DTexture(const std::string & SrcFileName, const std::string & TarFileName)
 {
+	std::ifstream stream(TarFileName.c_str());
+	if (stream.good()) return true;
+
 	int w, h, n;
 	unsigned char *data = stbi_load(SrcFileName.c_str(), &w, &h, &n, 0);
 	ImportAsset* ImportAsset = new ImportTextureData();
