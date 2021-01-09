@@ -1,3 +1,3 @@
-D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\simpleModel.vert -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\simpleModelVert.spv
-D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\simpleModel.frag -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\simpleModelFrag.spv
+D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\light.vert -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\lightVert.spv
+D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\light.frag -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\lightFrag.spv
 pause

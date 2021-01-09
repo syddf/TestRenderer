@@ -2,6 +2,29 @@
 #include "VulkanCommon.h"
 #include "./../GraphicsAPICommon/GraphicsInterface.h"
 #include "VulkanAttachment.h"
+#include "./../WorldCommon/WorldObject.h"
+
+struct RenderingNodeDesc
+{
+	char* MaterialAddr;
+	std::vector<WorldObject::ObjectPtr> Object;
+};
+
+struct RenderingPipelineNodeDesc
+{
+	FrameBufferLayoutDesc FrameBufferLayoutDesc;
+	FrameBufferDesc FrameBufferDesc;
+	std::vector<std::string> DependingAttachmentViewName;
+	std::vector<RenderingNodeDesc> RenderingNodeDescVec;
+	PipelineBindPoint BindPoint;
+	std::string NodeName;
+	bool AttachToWindowNode;
+
+	//..
+	std::vector<int> DependingNodeIndex;
+	bool AffectOtherNode;
+};
+
 
 class VulkanRenderingNode
 {
@@ -18,7 +41,7 @@ private:
 	VkPipelineLayout mPipelineLayout;
 	VkPipeline mPipeline;
 	char* mMaterialAddr;
-	std::vector<char*> mModelAddr;
+	std::vector<WorldObject::ObjectPtr> mObject;
 	std::vector<VkCommandBuffer> mCommandBuffer;
 	std::vector<bool> mDirty;
 };

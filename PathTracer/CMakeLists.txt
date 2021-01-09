@@ -11,6 +11,10 @@ FILE (GLOB SOURCE_LIST "./GraphicsAPICommon/*.cpp" "./GraphicsAPICommon/*.h")
 foreach(target ${SOURCE_LIST})
 	list(APPEND SRC_LIST ${target})
 endforeach()
+FILE (GLOB SOURCE_LIST "./WorldCommon/*.cpp" "./WorldCommon/*.h")
+foreach(target ${SOURCE_LIST})
+	list(APPEND SRC_LIST ${target})
+endforeach()
 
 list (APPEND SOURCE_LIST ${CMAKE_SOURCE_DIR}/Source/Prefix.h)
 ADD_EXECUTABLE(pt ${SRC_LIST})
@@ -60,6 +64,13 @@ source_group("Vulkan/" FILES
 source_group("GraphicsAPICommon/" FILES 
 ./GraphicsAPICommon/GraphicsInterface.h
 ./GraphicsAPICommon/GraphicsStructure.h
+)
+
+source_group("WorldCommon/" FILES
+./WorldCommon/World.h
+./WorldCommon/World.cpp
+./WorldCommon/WorldObject.h
+./WorldCommon/WorldObject.cpp
 )
 
 if (UNIX AND NOT APPLE)

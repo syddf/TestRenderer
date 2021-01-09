@@ -12,6 +12,7 @@
 #include "Vulkan/ResourceCreator.h"
 #include "Vulkan/RenderingPipeline.h"
 #include "Vulkan/PresentEngine.h"
+#include "Vulkan/Scene.h"
 
 #include <stdio.h>
 #include <direct.h>
@@ -26,13 +27,9 @@ VulkanPresentEngine* presentEngine;
 
 void test(VkQueue graphicsQueue, VulkanWindow* window)
 {
-	float theta = 0.0f;
-	auto material = ResourceCreator::CreateMaterial("test", "D:\\OfflineRenderer\\Asset\\simpleModelVert.data", "D:\\OfflineRenderer\\Asset\\simpleModelFrag.data");
-
+	auto material = ResourceCreator::CreateMaterial("test1", "D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data");
 	ResourceCreator::CreateImageFromFile("D:\\OfflineRenderer\\Asset\\Dst\\red.data");
-	material->SetImage("texSampler", "D:\\OfflineRenderer\\Asset\\Dst\\red.data");
-	ResourceCreator::CreateMeshFromFile("./../../Asset/Dst/Cornell.data", "D:\\OfflineRenderer\\Asset\\simpleModelVert.data", 0, "cornell0");
-
+	VulkanSceneData * scene = new VulkanSceneData("C:\\Users\\syddfyuan\\Downloads\\VCTRenderer-master\\VCTRenderer-master\\engine\\assets\\models\\crytek-sponza\\res\\sponza.data");
 	RenderingPipelineNodeDesc nodeDesc = {};
 	nodeDesc.NodeName = "testNode";
 	nodeDesc.BindPoint = PipelineBindPoint::BP_GRAPHICS;
@@ -48,17 +45,14 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	attachDesc.Format = TextureFormat::TF_B8G8R8A8SRGB;
 	nodeDesc.FrameBufferLayoutDesc.AttachmentDesc.push_back(attachDesc);
 
-	RenderingNodeDesc renderingDesc;
-	renderingDesc.MaterialAddr = (char*)ResourceCreator::CreateMaterial("test", "", "").get();
-	renderingDesc.ModelAddr.push_back((char*)ResourceCreator::CreateMeshFromFile("","",0,"cornell0").get());
-	nodeDesc.RenderingNodeDescVec.push_back(renderingDesc);
+	nodeDesc.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data", "Sponza");
 
 	std::vector<RenderingPipelineNodeDesc> pipelineNodesVec;
 	pipelineNodesVec.push_back(nodeDesc);
 
 	auto vulkanPipeline = new VulkanRenderingPipeline();
 	vulkanPipeline->GenerateRenderingGraph(pipelineNodesVec);
-	
+	float theta = 0.0f;
 	while (true)
 	{
 		theta += 0.01f;
@@ -87,8 +81,8 @@ void compileShader()
 {
 	std::vector<std::string> shaderFiles = 
 	{
-		"simpleModel.vert",
-		"simpleModel.frag"
+		"light.vert",
+		"light.frag"
 	};
 	std::vector<std::string> newShaderPathVec;
 	char buffer[MAXPATH];
@@ -131,7 +125,7 @@ void compileShader()
 
 int main() 
 {	
-	//compileShader();
+	compileShader();
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 

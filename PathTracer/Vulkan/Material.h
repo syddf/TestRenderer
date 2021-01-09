@@ -44,7 +44,7 @@ public:
 	VkPipelineDepthStencilStateCreateInfo GetDepthStencilStateCreateInfo();
 	VkPipelineVertexInputStateCreateInfo GetVertexInputStateCreateInfo(std::vector<VkVertexInputAttributeDescription>& attributeDescVec, VkVertexInputBindingDescription& bindingDesc);
 	VkPipelineRasterizationStateCreateInfo GetRasterizationStateCreateInfo();
-	VkDescriptorSet* GetDescriptorSet(int frameIndex, int& descCount);
+	std::vector<VkDescriptorSet> GetDescriptorSet(int frameIndex, int& descCount);
 
 public:
 	void SetFloat4(std::string paramName, Vec4 value);
@@ -56,12 +56,15 @@ public:
 	void Update(int frameIndex);
 	void TranslateImageLayout(int frameIndex, VkCommandBuffer commandBuffer);
 
+	void ExportPerObjectDescriptor(VkDescriptorSetLayout& setLayout, VkDescriptorPool& descPool, std::vector<VkDescriptorSet>& descSet, MaterialParams& params, std::vector<std::map<int, IBuffer::BufferPtr>>& cBuffer);
+
 private:
 	std::vector<bool> mConstantBufferDirty;
 	std::vector<bool> mImageDirty;
 
 private:
 	MaterialParams mParams;
+	MaterialParams mPerObjectParams;
 	VulkanMaterialShader mShader;
 	MaterialMode mMaterialMode;
 
@@ -71,6 +74,12 @@ private:
 
 	VkDescriptorPoolSize mUniformBufferPoolSize;
 	VkDescriptorPoolSize mImageSamplerPoolSize;
+	VkDescriptorPoolSize mPerObjectUniformBufferPoolSize;
+	VkDescriptorPoolSize mPerObjectImageSamplerPoolSize;
+
+	std::vector<VkDescriptorSetLayoutBinding> mPerObjectBindingVec;
+	std::vector<int> mPerObjectBindingSize;
+
 	VkDescriptorPool mDescriptorPool;
 	std::vector<VkDescriptorSet> mVKDescSetVec;
 	std::vector<std::map<int, std::map<int, IBuffer::BufferPtr>>> mMaterialUniformBuffer;

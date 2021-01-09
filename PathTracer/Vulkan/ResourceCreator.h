@@ -10,6 +10,7 @@
 #include "./../../AssetImporter/ImportTextureData.h"
 #include "./../../AssetImporter/ImportSPIRVShaderData.h"
 #include "VulkanAttachment.h"
+#include "./../WorldCommon/WorldObject.h"
 
 class ResourceCreator
 {
@@ -19,8 +20,9 @@ public:
 	static IImage::ImagePtr CreateImageFromFile(std::string imageFile);
 	static IBuffer::BufferPtr CreateVertexBuffer(char* bufferData, UInt32 bufferSize);
 	static IBuffer::BufferPtr CreateIndexBuffer(char* bufferData, UInt32 bufferSize);
-	static VulkanMaterial::MaterialPtr CreateMaterial(std::string materialName, std::string vertexShader, std::string fragmentShader);
+	static VulkanMaterial::MaterialPtr CreateMaterial(std::string materialName, std::string vertexShader = "", std::string fragmentShader = "");
 	static IMesh::MeshPtr CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex, std::string modelName);
+	static IMesh::MeshPtr GetExportedMesh(std::string meshName);
 	static VulkanAttachment::AttachmentPtr CreateDepthStencilAttachment(std::string name, int width, int height);
 	static VulkanAttachment::AttachmentPtr CreateColorAttachment(std::string name, int width, int height);
 	static VulkanAttachment::AttachmentPtr RenameAttachment(std::string originName, std::string anotherName);
@@ -28,7 +30,7 @@ public:
 	static void SaveAttachment(std::string attachmentName, VulkanAttachment::AttachmentPtr attachmentPtr);
 	static VulkanShader::VulkanShaderPtr CreateShaderFromFile(std::string shaderFile);
 	static TextureDimension GetTextureDimension(TextureTypeEnum texType);
-	static void CreateWorldObject(std::string objectName, std::string materialName, std::string modelName);
+	static WorldObject::ObjectPtr CreateWorldObject(std::string objectName, std::string materialName, std::string modelName);
 	static TextureFormat GetImageImportDataFormat(int channel)
 	{
 		if (channel == 3)

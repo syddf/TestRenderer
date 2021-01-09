@@ -64,7 +64,7 @@ IMesh::MeshPtr VulkanMeshData::ExportVulkanMesh(std::vector<MeshChannel>& channe
 	int indOffset = 0;
 	int vertCount = mImportSceneData.MeshData.MeshVertexCount[meshIndex];
 	int indCount = mImportSceneData.MeshData.MeshIndexCount[meshIndex];
-	for (int i = 0; i < meshIndex - 1; i++)
+	for (int i = 0; i < meshIndex; i++)
 	{
 		vertOffset += mImportSceneData.MeshData.MeshVertexCount[i];
 		indOffset += mImportSceneData.MeshData.MeshIndexCount[i];

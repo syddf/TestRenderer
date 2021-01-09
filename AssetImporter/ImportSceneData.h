@@ -99,7 +99,7 @@ inline auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::Unkn
 
 enum TextureType
 {
-	None,
+	NoneT,
 	Diffuse,
 	Specular,
 	Ambient,
@@ -176,9 +176,9 @@ struct ImportCameraData
 
 enum LightType
 {
-	DirectionalLight,
-	PointLight,
-	SpotLight
+	LT_DirectionalLight,
+	LT_PointLight,
+	LT_SpotLight
 };
 
 struct ImportLight

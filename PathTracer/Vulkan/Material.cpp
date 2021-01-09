@@ -3,6 +3,8 @@
 extern VkDevice gVulkanDevice;
 extern UInt32 gSwapChainImageCount;
 
+const int PerObjDescSetIndex = 1;
+
 template<typename T>
 void UpdateConstantBufferParam(int frameIndex, int offset, IBuffer::BufferPtr buffer, T& value)
 {
@@ -45,22 +47,31 @@ void VulkanMaterial::MergeShaderParams()
 	if (mShader.VertexShader) totalParams += std::static_pointer_cast<VulkanShader>(mShader.VertexShader)->GetShaderParams();
 	if (mShader.FragmentShader) totalParams += std::static_pointer_cast<VulkanShader>(mShader.FragmentShader)->GetShaderParams();
 	totalParams.Sort();
+
+	auto AddParams = [&](ShaderBlockInfo & block, ShaderParameter& param, MaterialParams& allParams)->void
+	{
+		if (param.Format == "float+4")
+			AddConstantBufferMaterialParam(block.Set, block.Binding, param.Offset, param.Name, allParams.Vec4Params);
+		else if (param.Format == "float+3")
+			AddConstantBufferMaterialParam(block.Set, block.Binding, param.Offset, param.Name, allParams.Vec3Params);
+		else if (param.Format == "matrix")
+			AddConstantBufferMaterialParam(block.Set, block.Binding, param.Offset, param.Name, allParams.MatrixParams);
+		else if (param.Format == "float")
+			AddConstantBufferMaterialParam(block.Set, block.Binding, param.Offset, param.Name, allParams.FloatParams);
+		else if (param.Format == "int")
+			AddConstantBufferMaterialParam(block.Set, block.Binding, param.Offset, param.Name, allParams.IntParams);
+	};
+
 	for (auto block : totalParams.BlockVec)
 	{
 		if (block.StructBuffer)
 		{
 			for (auto param : block.ParamsVec)
 			{
-				if (param.Format == "float+4")
-					AddConstantBufferMaterialParam(block.Set, block.Binding, param.Offset, param.Name, mParams.Vec4Params);
-				else if (param.Format == "float+3")
-					AddConstantBufferMaterialParam(block.Set, block.Binding, param.Offset, param.Name, mParams.Vec3Params);
-				else if (param.Format == "matrix")
-					AddConstantBufferMaterialParam(block.Set, block.Binding, param.Offset, param.Name, mParams.MatrixParams);
-				else if (param.Format == "float")
-					AddConstantBufferMaterialParam(block.Set, block.Binding, param.Offset, param.Name, mParams.FloatParams);
-				else if (param.Format == "int")
-					AddConstantBufferMaterialParam(block.Set, block.Binding, param.Offset, param.Name, mParams.IntParams);
+				AddParams(block, param, mParams);
+
+				if (block.Set == PerObjDescSetIndex)
+					AddParams(block, param, mPerObjectParams);
 			}
 		}
 		else
@@ -96,6 +107,9 @@ void VulkanMaterial::MergeShaderParams()
 					imageParam.ArrayIndex = GetTextureArrayIndex(param.Name);
 					imageParam.Attachment = false;
 					mParams.ImageParams[param.Name] = imageParam;
+
+					if (block.Set == PerObjDescSetIndex)
+						mPerObjectParams.ImageParams[param.Name] = imageParam;
 				}
 			}
 		}
@@ -108,6 +122,11 @@ void VulkanMaterial::CreateVulkanDescLayout()
 	mUniformBufferPoolSize.descriptorCount = 0;
 	mImageSamplerPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	mImageSamplerPoolSize.descriptorCount = 0;
+
+	mPerObjectUniformBufferPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mPerObjectUniformBufferPoolSize.descriptorCount = 0;
+	mPerObjectImageSamplerPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	mPerObjectImageSamplerPoolSize.descriptorCount = 0;
 
 	std::map<int, std::vector<VkDescriptorSetLayoutBinding>> descSetLayoutMap;
 	std::map<int, std::vector<int>> descBindingSizeMap;
@@ -144,15 +163,25 @@ void VulkanMaterial::CreateVulkanDescLayout()
 					newBinding.descriptorCount = 1;
 					newBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 					mUniformBufferPoolSize.descriptorCount++;
+					if (set == PerObjDescSetIndex)
+						mPerObjectUniformBufferPoolSize.descriptorCount++;
 				}
 				else
 				{
 					newBinding.descriptorCount = block.ParamsVec.size();
 					newBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 					mImageSamplerPoolSize.descriptorCount += newBinding.descriptorCount;
+					if (set == PerObjDescSetIndex)
+						mPerObjectImageSamplerPoolSize.descriptorCount++;
 				}
 				descSetLayoutMap[set].push_back(newBinding);
 				descBindingSizeMap[set].push_back(block.BlockSize);
+
+				if (set == 1)
+				{
+					mPerObjectBindingVec.push_back(newBinding);
+					mPerObjectBindingSize.push_back(block.BlockSize);
+				}
 			}
 		}
 	};
@@ -394,10 +423,17 @@ VkPipelineRasterizationStateCreateInfo VulkanMaterial::GetRasterizationStateCrea
 	return createInfo;
 }
 
-VkDescriptorSet* VulkanMaterial::GetDescriptorSet(int frameIndex, int & descCount)
+std::vector<VkDescriptorSet> VulkanMaterial::GetDescriptorSet(int frameIndex, int & descCount)
 {
+	std::vector<VkDescriptorSet> descSetVec;
 	descCount = mVKDescSetLayoutVec.size();
-	return &mVKDescSetVec[frameIndex * descCount];
+	for (int i = 0; i < descCount; i++)
+	{
+		if (i == PerObjDescSetIndex)
+			continue;
+		descSetVec.push_back(mVKDescSetVec[frameIndex * descCount + i]);
+	}
+	return descSetVec;
 }
 
 void VulkanMaterial::SetFloat4(std::string paramName, Vec4 value)
@@ -483,6 +519,48 @@ void VulkanMaterial::TranslateImageLayout(int frameIndex, VkCommandBuffer comman
 		{
 			IImage::ImagePtr image = ResourceCreator::CreateImageFromFile(param.second.Value);
 			std::dynamic_pointer_cast<VulkanImage>(image)->TranslateImageLayout(commandBuffer, VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0);
+		}
+	}
+}
+
+void VulkanMaterial::ExportPerObjectDescriptor(VkDescriptorSetLayout & setLayout, VkDescriptorPool & descPool, std::vector<VkDescriptorSet>& descSet, MaterialParams & params, std::vector<std::map<int, IBuffer::BufferPtr>>& cBuffer)
+{
+	setLayout = mVKDescSetLayoutVec[PerObjDescSetIndex];
+
+	VkDescriptorPoolSize descPoolSize[2] = { mUniformBufferPoolSize , mImageSamplerPoolSize };
+	VkDescriptorPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.maxSets = gSwapChainImageCount;
+	poolInfo.poolSizeCount = 2;
+	poolInfo.pPoolSizes = descPoolSize;
+	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	VKFUNC(vkCreateDescriptorPool(gVulkanDevice, &poolInfo, nullptr, &descPool), "Create Descriptor Pool Failed.");
+
+	descSet.resize(gSwapChainImageCount);
+	std::vector<VkDescriptorSetLayout> repeatedLayout;
+	for (int i = 0; i < gSwapChainImageCount; i++)
+		repeatedLayout.push_back(setLayout);
+	VkDescriptorSetAllocateInfo allocateInfo = {};
+	allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocateInfo.descriptorPool = descPool;
+	allocateInfo.descriptorSetCount = gSwapChainImageCount;
+	allocateInfo.pSetLayouts = repeatedLayout.data();
+	VKFUNC(vkAllocateDescriptorSets(gVulkanDevice, &allocateInfo, descSet.data()), "Allocate Descriptor Failed.");
+
+	params = mPerObjectParams;
+
+	cBuffer.resize(gSwapChainImageCount);
+	for (int i = 0; i < gSwapChainImageCount; i++)
+	{
+		int vI = 0;
+		for (auto binding : mPerObjectBindingVec)
+		{
+			int bindInd = binding.binding;
+			if (binding.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			{
+				cBuffer[i][bindInd] = ResourceCreator::CreateUniformBuffer(mPerObjectBindingSize[vI]);
+			}
+			vI++;
 		}
 	}
 }

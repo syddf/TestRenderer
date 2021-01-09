@@ -79,7 +79,6 @@ bool ModelImporter::Load(const std::string & SrcFileName, const std::string & Ta
 
 	for (UInt32 i = 0; i < LoadedScene->mNumMaterials; i++)
 	{
-		ImportScene->MaterialData.MaterialVec.clear();
 		aiMaterial* material = LoadedScene->mMaterials[i];
 		ImportMaterial importMaterial;
 		aiColor3D vec;
@@ -146,11 +145,11 @@ bool ModelImporter::Load(const std::string & SrcFileName, const std::string & Ta
 		light.AngleInnerCone = LoadedScene->mLights[i]->mAngleInnerCone;
 		light.AngleOuterCone = LoadedScene->mLights[i]->mAngleOuterCone;
 		if (LoadedScene->mLights[i]->mType == aiLightSource_DIRECTIONAL)
-			light.Type = LightType::DirectionalLight;
+			light.Type = LightType::LT_DirectionalLight;
 		else if (LoadedScene->mLights[i]->mType == aiLightSource_POINT)
-			light.Type = LightType::PointLight;
+			light.Type = LightType::LT_PointLight;
 		else if (LoadedScene->mLights[i]->mType == aiLightSource_SPOT)
-			light.Type = LightType::SpotLight;
+			light.Type = LightType::LT_SpotLight;
 		else
 			continue;
 		ImportScene->LightData.LightVec.push_back(light);

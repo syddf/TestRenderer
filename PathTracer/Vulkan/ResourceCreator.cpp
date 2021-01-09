@@ -1,13 +1,13 @@
 #include "ResourceCreator.h"
 #include "Image.h"
-#include "WorldObject.h"
+
 std::map<std::string, VulkanShader::VulkanShaderPtr> shaderMap;
 std::map<std::string, IImage::ImagePtr> imageMap;
 std::map<std::string, std::shared_ptr<VulkanMeshData>> meshDataMap;
 std::map<std::string, VulkanAttachment::AttachmentPtr> attachmentMap;
 std::map<std::string, IMesh::MeshPtr> meshMap;
 std::map<std::string, VulkanMaterial::MaterialPtr> materialMap;
-std::map<std::string, WorldObject> objectMap;
+std::map<std::string, WorldObject::ObjectPtr> objectMap;
 extern UInt32 gScreenWidth;
 extern UInt32 gScreenHeight;
 
@@ -107,7 +107,8 @@ VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string material
 	VulkanMaterialShader materialShader = {};
 	materialShader.VertexShader = CreateShaderFromFile(vertexShader);
 	materialShader.FragmentShader = CreateShaderFromFile(fragmentShader);
-	return materialMap[materialName] = std::make_shared<VulkanMaterial>(materialShader);
+	materialMap[materialName] = std::make_shared<VulkanMaterial>(materialShader);
+	return materialMap[materialName];
 }
 
 IMesh::MeshPtr ResourceCreator::CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex, std::string modelName)
@@ -145,6 +146,12 @@ IMesh::MeshPtr ResourceCreator::CreateMeshFromFile(std::string modelDataFile, st
 		meshDataMap[modelDataFile] = std::make_shared<VulkanMeshData>(*meshData);
 	}
 	return meshMap[modelName] = meshDataMap[modelDataFile]->ExportVulkanMesh(meshChannels, meshIndex);
+}
+
+IMesh::MeshPtr ResourceCreator::GetExportedMesh(std::string meshName)
+{
+	assert(meshMap[meshName] != nullptr);
+	return meshMap[meshName];
 }
 
 VulkanAttachment::AttachmentPtr ResourceCreator::CreateDepthStencilAttachment(std::string name, int width, int height)
@@ -239,12 +246,14 @@ TextureDimension ResourceCreator::GetTextureDimension(TextureTypeEnum texType)
 	return TextureDimension::None;
 }
 
-void ResourceCreator::CreateWorldObject(std::string objectName, std::string materialName, std::string modelName)
+WorldObject::ObjectPtr ResourceCreator::CreateWorldObject(std::string objectName, std::string materialName, std::string modelName)
 {
 	assert(materialMap.find(materialName) != materialMap.end());
 	assert(meshMap.find(modelName) != meshMap.end());
-	WorldObject obj = WorldObject(materialName, modelName, objectName);
+	if (objectMap[objectName] != nullptr) return objectMap[objectName];
+	auto obj = std::make_shared<WorldObject>(materialName, modelName, objectName);
 	objectMap.insert(std::make_pair(objectName, obj));
+	return obj;
 }
 
 void ResourceCreator::DestroyCachingResource()

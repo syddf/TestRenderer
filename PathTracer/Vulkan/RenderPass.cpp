@@ -306,12 +306,14 @@ VkCommandBuffer VulkanRenderingNode::RecordCommandBuffer(int frameIndex, VkRende
 	VulkanMaterial* mat = reinterpret_cast<VulkanMaterial*>(mMaterialAddr);
 	mat->Update(frameIndex);
 	int descCount;
-	VkDescriptorSet* descSet = mat->GetDescriptorSet(frameIndex, descCount);
-	vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, descCount, descSet, 0, nullptr);
-	
-	for (auto meshAddr : mModelAddr)
+
+	std::vector<VkDescriptorSet> descSetVec = mat->GetDescriptorSet(frameIndex, descCount);	
+	descSetVec.push_back(VK_NULL_HANDLE);
+	for (auto objPtr : mObject)
 	{
-		VulkanMesh* mesh = reinterpret_cast<VulkanMesh*>(meshAddr);
+		descSetVec[descSetVec.size() - 1] = objPtr->GetDescSet(frameIndex);
+		vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, descSetVec.size(), descSetVec.data(), 0, nullptr);
+		IMesh::MeshPtr mesh = objPtr->GetMeshPtr();
 		int vertCount = mesh->GetVertexCount();
 		int indCount = mesh->GetIndexCount();
 		int indDataSize = mesh->GetIndexBufferDataSize();
@@ -330,7 +332,7 @@ VulkanRenderingNode::VulkanRenderingNode(RenderingNodeDesc desc, VkRenderPass re
 {
 	CreatePipeline(desc, renderPass, blendState);
 	mMaterialAddr = desc.MaterialAddr;
-	mModelAddr = desc.ModelAddr;
+	mObject = desc.Object;
 	GenerateCommandBuffer();
 }
 
