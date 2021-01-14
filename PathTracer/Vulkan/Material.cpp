@@ -316,6 +316,10 @@ void VulkanMaterial::WriteDescSet(int frameIndex)
 	int startIndex = frameIndex * mVKDescSetLayoutVec.size();
 	auto& uniformBufferMap = mMaterialUniformBuffer[frameIndex];
 	std::vector<VkWriteDescriptorSet> descriptorSetWrite;
+	std::vector<VkDescriptorBufferInfo> descBufferInfoVec;
+	std::vector<VkDescriptorImageInfo> descImageInfoVec;
+	descBufferInfoVec.reserve(256);
+	descImageInfoVec.reserve(256);
 	for (auto set : uniformBufferMap)
 	{
 		int setInd = set.first;
@@ -327,6 +331,7 @@ void VulkanMaterial::WriteDescSet(int frameIndex)
 			descBufferInfo.buffer = *reinterpret_cast<VkBuffer*>(uniformBuffer->GetGPUBufferHandleAddress());
 			descBufferInfo.offset = 0;
 			descBufferInfo.range = uniformBuffer->GetBufferSize();
+			descBufferInfoVec.push_back(descBufferInfo);
 
 			VkWriteDescriptorSet descriptorWrite = {};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -335,7 +340,7 @@ void VulkanMaterial::WriteDescSet(int frameIndex)
 			descriptorWrite.dstArrayElement = 0;
 			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pBufferInfo = &descBufferInfo;
+			descriptorWrite.pBufferInfo = &(descBufferInfoVec.back());
 			descriptorWrite.pImageInfo = nullptr;
 			descriptorWrite.pTexelBufferView = nullptr;
 
@@ -359,6 +364,7 @@ void VulkanMaterial::WriteDescSet(int frameIndex)
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo.imageView = *((VkImageView*)image->GetGPUImageViewHandleAddress());
 		imageInfo.sampler = *((VkSampler*)image->GetSamplerHandleAddress());
+		descImageInfoVec.push_back(imageInfo);
 
 		VkWriteDescriptorSet descriptorWrite = {};
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -368,7 +374,7 @@ void VulkanMaterial::WriteDescSet(int frameIndex)
 		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		descriptorWrite.descriptorCount = 1;
 		descriptorWrite.pBufferInfo = nullptr;
-		descriptorWrite.pImageInfo = &imageInfo;
+		descriptorWrite.pImageInfo = &descImageInfoVec.back();
 		descriptorWrite.pTexelBufferView = nullptr;
 		descriptorSetWrite.push_back(descriptorWrite);
 	}
@@ -473,7 +479,8 @@ void VulkanMaterial::SetImage(std::string paramName, std::string value)
 	assert(mParams.ImageParams.find(paramName) != mParams.ImageParams.end());
 	mParams.ImageParams[paramName].Value = value;
 	mParams.ImageParams[paramName].Attachment = false;
-	mImageDirty.resize(gSwapChainImageCount, true);
+	for (int i = 0; i < mImageDirty.size(); i++)
+		mImageDirty[i] = true;
 }
 
 void VulkanMaterial::BindImageAttachment(std::string paramName, std::string value)
@@ -526,12 +533,12 @@ void VulkanMaterial::TranslateImageLayout(int frameIndex, VkCommandBuffer comman
 void VulkanMaterial::ExportPerObjectDescriptor(VkDescriptorSetLayout & setLayout, VkDescriptorPool & descPool, std::vector<VkDescriptorSet>& descSet, MaterialParams & params, std::vector<std::map<int, IBuffer::BufferPtr>>& cBuffer)
 {
 	setLayout = mVKDescSetLayoutVec[PerObjDescSetIndex];
-
-	VkDescriptorPoolSize descPoolSize[2] = { mUniformBufferPoolSize , mImageSamplerPoolSize };
+	mPerObjectUniformBufferPoolSize.descriptorCount *= gSwapChainImageCount;
+	VkDescriptorPoolSize descPoolSize[1] = { mPerObjectUniformBufferPoolSize };
 	VkDescriptorPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolInfo.maxSets = gSwapChainImageCount;
-	poolInfo.poolSizeCount = 2;
+	poolInfo.poolSizeCount = 1;
 	poolInfo.pPoolSizes = descPoolSize;
 	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 	VKFUNC(vkCreateDescriptorPool(gVulkanDevice, &poolInfo, nullptr, &descPool), "Create Descriptor Pool Failed.");
@@ -563,4 +570,35 @@ void VulkanMaterial::ExportPerObjectDescriptor(VkDescriptorSetLayout & setLayout
 			vI++;
 		}
 	}
+
+	std::vector<VkWriteDescriptorSet> descriptorSetWrite;
+	std::vector<VkDescriptorBufferInfo> bufferInfoVec;
+	bufferInfoVec.reserve(256);
+	for (int i = 0; i < gSwapChainImageCount; i++)
+	{
+		for (auto binding : cBuffer[i])
+		{
+			int bindInd = binding.first;
+			auto& uniformBuffer = binding.second;
+			VkDescriptorBufferInfo descBufferInfo = {};
+			descBufferInfo.buffer = *reinterpret_cast<VkBuffer*>(uniformBuffer->GetGPUBufferHandleAddress());
+			descBufferInfo.offset = 0;
+			descBufferInfo.range = uniformBuffer->GetBufferSize();
+			bufferInfoVec.push_back(descBufferInfo);
+
+			VkWriteDescriptorSet descriptorWrite = {};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = descSet[i];
+			descriptorWrite.dstBinding = bindInd;
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pBufferInfo = &bufferInfoVec.back();
+			descriptorWrite.pImageInfo = nullptr;
+			descriptorWrite.pTexelBufferView = nullptr;
+
+			descriptorSetWrite.push_back(descriptorWrite);
+		}
+	}
+	vkUpdateDescriptorSets(gVulkanDevice, descriptorSetWrite.size(), descriptorSetWrite.data(), 0, nullptr);
 }

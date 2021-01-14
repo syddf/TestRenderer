@@ -55,6 +55,8 @@ IMesh::MeshPtr VulkanMeshData::ExportVulkanMesh(std::vector<MeshChannel>& channe
 	{
 		{ MeshChannel::Normal, 12},
 		{ MeshChannel::Position, 12},
+		{ MeshChannel::Tangent, 12},
+	    { MeshChannel::BiTangent, 12},
 		{ MeshChannel::UV0, 8},
 		{ MeshChannel::UV1, 8},
 		{ MeshChannel::UnknownVec2, 8},
@@ -96,6 +98,10 @@ IMesh::MeshPtr VulkanMeshData::ExportVulkanMesh(std::vector<MeshChannel>& channe
 				CopyChannelData< MeshChannel::UnknownVec2>(vertData, i + vertOffset);
 			else if (channels[j] == MeshChannel::UnknownVec3)
 				CopyChannelData< MeshChannel::UnknownVec3>(vertData, i + vertOffset);
+			else if (channels[j] == MeshChannel::Tangent)
+				CopyChannelData< MeshChannel::Tangent>(vertData, i + vertOffset);
+			else if (channels[j] == MeshChannel::BiTangent)
+				CopyChannelData< MeshChannel::BiTangent>(vertData, i + vertOffset);
 		}
 	}
 

@@ -14,6 +14,7 @@ enum TextureDimension
 enum TextureFormat
 {
 	TF_UNDEFINED,
+	TF_R8,
 	TF_R8G8B8A8UInt,
 	TF_R8G8B8SRGB,
 	TF_R8G8B8A8SRGB,

@@ -15,6 +15,7 @@ int main(int argc, char** argv)
 //	std::string srcPath = path + "/../../Asset/Src/red.png";
 //	std::string dstPath = path + "/../../Asset/Dst/red.data";
 */
+
 	assert(argc == 3);
 	std::string srcFile = argv[1];
 	std::string dstFile = argv[2];

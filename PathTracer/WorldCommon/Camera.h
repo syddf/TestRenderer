@@ -10,21 +10,24 @@ public:
 	~Camera();
 
 public:
-	Matrix GetViewTransformMatrix();
-	
-private:
-	void UpdateViewTransform();
+	void GetViewTransformMatrix(Matrix& view, Matrix& proj);
+	void SetParams(float aspect, float near, float far, float fov, Vec3 lookAt, Vec3 pos, Vec3 up);
+	Vec3 GetPosition() const { return mPos; }
 
 private:
-	const float mAspectRatio;
-	const float mPlaneNear;
-	const float mPlaneFar;
-	const float mFOV;
+	void UpdateViewTransform();
+	void UpdateProjTransform();
+
+private:
+	float mAspectRatio;
+	float mPlaneNear;
+	float mPlaneFar;
+	float mFOV;
 
 	Vec3 mLookAt;
 	Vec3 mPos;
 	Vec3 mUp;
 	Matrix mViewTransform;
-
+	Matrix mProjTransform;
 	bool mDirty;
 };

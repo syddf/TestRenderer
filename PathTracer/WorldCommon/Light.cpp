@@ -19,3 +19,7 @@ Light::Light(const ImportLight & light)
 Light::~Light()
 {
 }
+
+void Light::ResetDefaultDirectionalLight()
+{
+}

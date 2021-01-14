@@ -14,5 +14,15 @@ public:
 private:
 	Camera mMainCamera;
 	Light mLights[MAX_LIGHT];
-	std::vector<WorldObject> mWorldObjectVec;
+
+private:
+	void SetCameraDefault(const ImportSceneData& sceneData);
+	void AddDefaultDirectionalLight(int index);
+	
+public:
+	Vec3 GetCameraPosition() const { return mMainCamera.GetPosition(); }
+	Light GetLight(int index);
+	Matrix GetViewMatrix();
+	Matrix GetProjMatrix();
+	void Update();
 };

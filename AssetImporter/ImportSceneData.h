@@ -9,6 +9,8 @@ struct ImportMeshData
 {
 	std::vector<Vec3> PositionVec;
 	std::vector<Vec3> NormalVec;
+	std::vector<Vec3> TangentVec;
+	std::vector<Vec3> BiTangentVec;
 	std::vector<Vec2> TexCoord0Vec;
 	std::vector<Vec2> TexCoord1Vec;
 	std::vector<UInt32> IndicesVec;
@@ -26,6 +28,8 @@ struct ImportMeshData
 		Normal,
 		UV0,
 		UV1,
+		Tangent,
+		BiTangent,
 		UnknownVec3,
 		UnknownVec2
 	};
@@ -40,6 +44,8 @@ struct ImportMeshData
 		NormalVec.reserve(totalVerts);
 		TexCoord0Vec.reserve(totalVerts);
 		TexCoord1Vec.reserve(totalVerts);
+		TangentVec.reserve(totalVerts);
+		BiTangentVec.reserve(totalVerts);
 	}
 
 	void ReserveIndex(UInt32 Count)
@@ -83,6 +89,20 @@ inline auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::UV1>
 {
 	if (TexCoord1Vec.size() <= index) return Vec2(0, 0);
 	return TexCoord1Vec[index];
+}
+
+template<>
+inline auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::Tangent>(int index) const
+{
+	if (TangentVec.size() <= index) return Vec3(0, 0, 0);
+	return TangentVec[index];
+}
+
+template<>
+inline auto ImportMeshData::GetChannelData<ImportMeshData::MeshDataChannel::BiTangent>(int index) const
+{
+	if (BiTangentVec.size() <= index) return Vec3(0, 0, 0);
+	return BiTangentVec[index];
 }
 
 template<>
@@ -250,6 +270,8 @@ struct ImportSceneData : public ImportAsset
 		File.Write(AssetVersion);
 		File.Write(MeshData.PositionVec);
 		File.Write(MeshData.NormalVec);
+		File.Write(MeshData.TangentVec);
+		File.Write(MeshData.BiTangentVec);
 		File.Write(MeshData.TexCoord0Vec);
 		File.Write(MeshData.TexCoord1Vec);
 		File.Write(MeshData.MeshVertexCount);
@@ -271,6 +293,8 @@ struct ImportSceneData : public ImportAsset
 		File.Read(AssetVersion);
 		File.Read(MeshData.PositionVec);
 		File.Read(MeshData.NormalVec);
+		File.Read(MeshData.TangentVec);
+		File.Read(MeshData.BiTangentVec);
 		File.Read(MeshData.TexCoord0Vec);
 		File.Read(MeshData.TexCoord1Vec);
 		File.Read(MeshData.MeshVertexCount);

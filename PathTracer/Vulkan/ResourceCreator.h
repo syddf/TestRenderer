@@ -33,6 +33,8 @@ public:
 	static WorldObject::ObjectPtr CreateWorldObject(std::string objectName, std::string materialName, std::string modelName);
 	static TextureFormat GetImageImportDataFormat(int channel)
 	{
+		if (channel == 1)
+			return TextureFormat::TF_R8;
 		if (channel == 3)
 			return TextureFormat::TF_R8G8B8SRGB;
 		else if (channel == 4)

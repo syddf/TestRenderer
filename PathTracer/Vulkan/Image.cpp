@@ -33,16 +33,18 @@ VulkanImage::~VulkanImage()
 
 void VulkanImage::CreateImage(ImageDesc desc)
 {
+
 	VkImageCreateInfo imageCreateInfo = {};
 	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageCreateInfo.format = GetVKTextureFormat(desc.Format);
 	imageCreateInfo.imageType = GetVKTextureType(desc.Dimension);
 	imageCreateInfo.usage = GetVKImageUsageFlags(desc.Usage);
-	imageCreateInfo.initialLayout = desc.Usage == TextureUsageBits::TU_DEPTH_STENCIL ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	imageCreateInfo.extent.width = desc.Width;
 	imageCreateInfo.extent.height = desc.Height;
 	imageCreateInfo.extent.depth = desc.Depth;
 	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	desc.MipLevels = GetVKFormatSize(imageCreateInfo.format) == 1 ? 1 : desc.MipLevels;
 	imageCreateInfo.mipLevels = desc.MipLevels;
 	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageCreateInfo.arrayLayers = desc.ArrayLayers;
@@ -84,10 +86,19 @@ void VulkanImage::CreateImage(ImageDesc desc)
 		transDesc.DstTextureExtent[2] = desc.Depth;
 		transEngine->TranslateBufferToTexture(transDesc);
 
-		if (desc.GenerateMipMap)
+		if (desc.GenerateMipMap && GetVKFormatSize(imageCreateInfo.format) != 1)
 		{
 			GenerateMipMap(desc.Width, desc.Height, desc.MipLevels);
 		}
+		else
+		{
+			TranslateImageLayout(VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		}
+	}
+
+	if (desc.Usage == TextureUsageBits::TU_DEPTH_STENCIL)
+	{
+		TranslateImageLayout(VkImageLayout::VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 1);
 	}
 
 	ImageViewDesc viewDesc = {};
@@ -117,7 +128,7 @@ void VulkanImage::CreateImage(ImageDesc desc)
 	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 0.0f;
+	samplerInfo.maxLod = desc.MipLevels;
 
 	VKFUNC(vkCreateSampler(gVulkanDevice, &samplerInfo, nullptr, &mSampler), "Failed To Create Sampler");
 }
@@ -155,6 +166,13 @@ void VulkanImage::TranslateImageLayout(VkCommandBuffer commandBuffer, VkImageLay
 		barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	}
+	else if (barrier.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && barrier.newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 	}
 	else if (barrier.oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && barrier.newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 	{

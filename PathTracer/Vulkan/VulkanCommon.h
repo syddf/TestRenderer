@@ -18,6 +18,8 @@ static VkFormat GetVKTextureFormat(TextureFormat format)
 {
 	switch (format)
 	{
+		case TextureFormat::TF_R8:
+			return VkFormat::VK_FORMAT_R8_SRGB;
 		case TextureFormat::TF_R8G8B8A8UInt:
 			return VkFormat::VK_FORMAT_R8G8B8A8_UINT;
 		case TextureFormat::TF_R32G32B32A32SFloat:
@@ -232,6 +234,8 @@ static int GetVKFormatSize(VkFormat format)
 {
 	switch (format)
 	{
+	case VkFormat::VK_FORMAT_R8_SRGB:
+		return 1;
 	case VkFormat::VK_FORMAT_R8G8B8A8_UINT:
 		return 4;
 	case VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT:

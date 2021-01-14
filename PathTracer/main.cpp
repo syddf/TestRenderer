@@ -28,8 +28,8 @@ VulkanPresentEngine* presentEngine;
 void test(VkQueue graphicsQueue, VulkanWindow* window)
 {
 	auto material = ResourceCreator::CreateMaterial("test1", "D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data");
-	ResourceCreator::CreateImageFromFile("D:\\OfflineRenderer\\Asset\\Dst\\red.data");
 	VulkanSceneData * scene = new VulkanSceneData("C:\\Users\\syddfyuan\\Downloads\\VCTRenderer-master\\VCTRenderer-master\\engine\\assets\\models\\crytek-sponza\\res\\sponza.data");
+	ResourceCreator::CreateDepthStencilAttachment("DepthStencilAttachment", gScreenWidth, gScreenHeight);
 	RenderingPipelineNodeDesc nodeDesc = {};
 	nodeDesc.NodeName = "testNode";
 	nodeDesc.BindPoint = PipelineBindPoint::BP_GRAPHICS;
@@ -37,6 +37,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	nodeDesc.FrameBufferDesc.Width = gScreenWidth;
 	nodeDesc.FrameBufferDesc.Height = gScreenHeight;
 	nodeDesc.FrameBufferDesc.AttachmentName.push_back("SwapChainImage");
+	nodeDesc.FrameBufferDesc.AttachmentName.push_back("DepthStencilAttachment");
 
 	AttachmentDesc attachDesc;
 	attachDesc.Usage = TextureUsageBits::TU_COLOR_ATTACHMENT;
@@ -45,25 +46,19 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	attachDesc.Format = TextureFormat::TF_B8G8R8A8SRGB;
 	nodeDesc.FrameBufferLayoutDesc.AttachmentDesc.push_back(attachDesc);
 
-	nodeDesc.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data", "Sponza");
+	attachDesc.Usage = TextureUsageBits::TU_DEPTH_STENCIL;
+	attachDesc.Format = TextureFormat::TF_D24US8;
+	nodeDesc.FrameBufferLayoutDesc.AttachmentDesc.push_back(attachDesc);
 
+	nodeDesc.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data", "Sponza");
 	std::vector<RenderingPipelineNodeDesc> pipelineNodesVec;
 	pipelineNodesVec.push_back(nodeDesc);
-
 	auto vulkanPipeline = new VulkanRenderingPipeline();
 	vulkanPipeline->GenerateRenderingGraph(pipelineNodesVec);
-	float theta = 0.0f;
+
 	while (true)
 	{
-		theta += 0.01f;
-		glm::vec3 position = glm::vec3(-500 * sinf(theta), 0, -500 * cosf(theta));
-		glm::vec3 viewDir = glm::normalize(glm::vec3(0, 0, 0) - position);
-		glm::mat4x4 view = glm::lookAtLH(position, position + viewDir, glm::vec3(0.0f, 1.0f, 0.0f));
-		material->SetMatrix("view", view);
-		glm::mat4x4 world = glm::identity<glm::mat4x4>();
-		glm::mat4x4 proj = glm::perspectiveFovLH(90.0f, (float)gScreenWidth, (float)gScreenHeight, 0.1f, 1000.0f);
-		material->SetMatrix("model", world);
-		material->SetMatrix("proj", proj);
+		scene->UpdateSceneData();
 		int imageIndex = presentEngine->AcquireImage();
 		auto semaphore = vulkanPipeline->SubmitRenderingCommands(imageIndex, graphicsQueue, presentEngine->GetCurrentFrameRenderFinishFence());
 		presentEngine->PresentFrame(imageIndex, semaphore);
@@ -125,7 +120,7 @@ void compileShader()
 
 int main() 
 {	
-	compileShader();
+	//compileShader();
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
@@ -141,7 +136,6 @@ int main()
 			static_cast<VulkanDevice*>(device)->GetGraphicsFamily(),
 			static_cast<VulkanWindow*>(window)->GetPresentFamily()
 		);
-		ResourceCreator::CreateImageFromFile("./../../Asset/Dst/red.data");
 		
 		presentEngine = new VulkanPresentEngine(static_cast<VulkanSwapChain*>(swapChain)->GetSwapChainKHR(), static_cast<VulkanDevice*>(device)->GetGraphicsQueue());
 		test(static_cast<VulkanDevice*>(device)->GetGraphicsQueue(), static_cast<VulkanWindow*>(window));

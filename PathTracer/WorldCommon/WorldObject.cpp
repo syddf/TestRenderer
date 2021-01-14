@@ -49,12 +49,32 @@ void WorldObject::SetScale(float x, float y, float z)
 		mDirty[i] = true;
 }
 
+void WorldObject::UpdateParams()
+{
+	if (mMaterialResource.Params.MatrixParams.find("modelTransform") != mMaterialResource.Params.MatrixParams.end())
+	{
+		Matrix rotation = glm::identity<Matrix>();
+		rotation = glm::rotate(rotation, mTransform.Rotation.x, Vec3(1, 0, 0));
+		rotation = glm::rotate(rotation, mTransform.Rotation.y, Vec3(0, 1, 0));
+		rotation = glm::rotate(rotation, mTransform.Rotation.z, Vec3(0, 0, 1));
+		Matrix trans = glm::identity<Matrix>();
+		trans = glm::scale(rotation, Vec3(mTransform.Scale.x, mTransform.Scale.y, mTransform.Scale.z));
+		trans = glm::translate(trans, Vec3(mTransform.Position.x, mTransform.Position.y, mTransform.Position.z));
+		mMaterialResource.Params.MatrixParams["modelTransform"].Value = trans;
+
+		if (mMaterialResource.Params.MatrixParams.find("normalTransform") != mMaterialResource.Params.MatrixParams.end())
+		{
+			Matrix normal = glm::transpose(glm::inverse(trans));
+			mMaterialResource.Params.MatrixParams["normalTransform"].Value = normal;
+		}
+	}
+}
+
 void WorldObject::Update(int frameIndex)
 {
-	auto material = ResourceCreator::CreateMaterial(mMaterialName);
-	material->Update(frameIndex);
 	if (mDirty[frameIndex])
 	{
+		UpdateParams();
 		mDirty[frameIndex] = false;
 		for (auto param : mMaterialResource.Params.Vec4Params)
 			UpdateConstantBufferParam(frameIndex, param.second.Offset, mMaterialResource.CBuffer[frameIndex][param.second.Binding], param.second.Value);

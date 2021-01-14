@@ -186,6 +186,13 @@ bool ModelImporter::Load(const std::string & SrcFileName, const std::string & Ta
 				aiVector3D texCoord1 = mesh->mTextureCoords[1][vertIndex];
 				ImportScene->MeshData.TexCoord1Vec.push_back(Vec2(texCoord1.x, texCoord1.y));
 			}
+			if (mesh->HasTangentsAndBitangents())
+			{
+				aiVector3D tangent = mesh->mTangents[vertIndex];
+				aiVector3D biTangent = mesh->mBitangents[vertIndex];
+				ImportScene->MeshData.TangentVec.push_back(Vec3(tangent.x, tangent.y, tangent.z));
+				ImportScene->MeshData.BiTangentVec.push_back(Vec3(biTangent.x, biTangent.y, biTangent.z));
+			}
 		}
 		UInt32 indexCount = mesh->mNumFaces * 3;
 		ImportScene->MeshData.ReserveIndex(indexCount);

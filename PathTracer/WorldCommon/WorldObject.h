@@ -38,6 +38,8 @@ public:
 	int mMeshIndex;
 	ObjectTransform mTransform;
 	
+	void UpdateParams();
+
 	void Update(int frameIndex);
 	IMesh::MeshPtr GetMeshPtr();
 	VkDescriptorSet GetDescSet(int frameIndex);

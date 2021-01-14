@@ -10,7 +10,10 @@ public:
 	Light(const ImportLight& light);
 	~Light();
 
-private:
+public:
+	void ResetDefaultDirectionalLight();
+
+public:
 	Vec3 mAmbient;
 	Vec3 mDiffuse;
 	Vec3 mSpecular;

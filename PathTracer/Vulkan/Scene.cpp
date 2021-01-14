@@ -1,8 +1,9 @@
 #include "Scene.h"
-
+#include <glm/gtx/matrix_decompose.hpp>
 VulkanSceneData::VulkanSceneData(std::string modelFile)
 {
 	mSceneFile = modelFile;
+	mWorldData = std::make_shared<World>(*ResourceCreator::GetAsset<ImportSceneData>(mSceneFile));
 }
 
 VulkanSceneData::~VulkanSceneData()
@@ -24,6 +25,10 @@ std::vector<RenderingNodeDesc> VulkanSceneData::ExportAllRenderingNodeByMaterial
 			mat->SetImage("tDiffuse", material.TexturePath[TextureType::Diffuse]);	
 		if (material.TexturePath[TextureType::Specular] != "")
 			mat->SetImage("tSpecular", material.TexturePath[TextureType::Specular]);
+		if (material.TexturePath[TextureType::Height] != "")
+			mat->SetImage("tNormal", material.TexturePath[TextureType::Height]);
+		else if (material.TexturePath[TextureType::Normals] != "")
+			mat->SetImage("tNormal", material.TexturePath[TextureType::Normals]);
 		renderingNodeVec[matIndex].MaterialAddr = (char*)(mat.get());
 		matIndex++;
 		mUpdateSceneDataMaterialVec.push_back(mat);
@@ -40,10 +45,20 @@ std::vector<RenderingNodeDesc> VulkanSceneData::ExportAllRenderingNodeByMaterial
 	{
 		if (node.ChildNodeIndex.size() == 0)
 		{
+			glm::quat rotation;
+			glm::vec3 scale;
+			glm::vec3 translate;
+			glm::vec3 skew;
+			glm::vec4 perspec;
+			glm::decompose(node.Transform, scale, rotation, translate, skew, perspec);
+			glm::vec3 eular = glm::eulerAngles(rotation);
 			for (auto& meshNodeIndex : node.MeshIndex)
 			{
 				int materialIndex = meshData->MeshData.MaterialIndex[meshNodeIndex];
 				auto objPtr = ResourceCreator::CreateWorldObject(GetSceneObjectName(objIndex, scenePrefix), GetSceneMaterialName(materialIndex, scenePrefix), GetSceneMeshName(meshNodeIndex, scenePrefix));
+				objPtr->SetPosition(translate.x, translate.y, translate.z);
+				objPtr->SetRotation(rotation.x, rotation.y, rotation.z);
+				objPtr->SetScale(scale.x, scale.y, scale.z);
 				renderingNodeVec[materialIndex].Object.push_back(objPtr);
 				objIndex++;
 			}
@@ -69,7 +84,20 @@ std::string VulkanSceneData::GetSceneObjectName(int index, std::string prefix)
 
 void VulkanSceneData::UpdateSceneData()
 {
-
+	mWorldData->Update();
+	Matrix viewMat = mWorldData->GetViewMatrix();
+	Matrix projMat = mWorldData->GetProjMatrix();
+	Light testLight = mWorldData->GetLight(0);
+	for(auto material : mUpdateSceneDataMaterialVec)
+	{
+		material->SetMatrix("view", viewMat);
+		material->SetMatrix("proj", projMat);
+		material->SetFloat3("lights[0].diffuse", testLight.mDiffuse);
+		material->SetFloat3("lights[0].specular", testLight.mSpecular);
+		material->SetFloat3("lights[0].position", testLight.mPosition);
+		material->SetFloat3("lights[0].direction", testLight.mDirection);		
+		material->SetFloat3("uCameraPosition", mWorldData->GetCameraPosition());
+	}
 }
 
 void VulkanSceneData::InitializeSceneData()

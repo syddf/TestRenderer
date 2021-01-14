@@ -4,6 +4,7 @@
 #include "./../../AssetImporter/ImportSceneData.h"
 #include "ResourceCreator.h"
 #include "RenderPass.h"
+#include "./../WorldCommon/World.h"
 
 class VulkanSceneData
 {
@@ -24,4 +25,5 @@ private:
 private:
 	std::string mSceneFile;
 	std::vector<VulkanMaterial::MaterialPtr> mUpdateSceneDataMaterialVec;
+	std::shared_ptr<World> mWorldData;
 };

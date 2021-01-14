@@ -306,11 +306,12 @@ VkCommandBuffer VulkanRenderingNode::RecordCommandBuffer(int frameIndex, VkRende
 	VulkanMaterial* mat = reinterpret_cast<VulkanMaterial*>(mMaterialAddr);
 	mat->Update(frameIndex);
 	int descCount;
-
-	std::vector<VkDescriptorSet> descSetVec = mat->GetDescriptorSet(frameIndex, descCount);	
+	std::vector<VkDescriptorSet> descSetVec = mat->GetDescriptorSet(frameIndex, descCount);
 	descSetVec.push_back(VK_NULL_HANDLE);
+
 	for (auto objPtr : mObject)
 	{
+		objPtr->Update(frameIndex);
 		descSetVec[descSetVec.size() - 1] = objPtr->GetDescSet(frameIndex);
 		vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, descSetVec.size(), descSetVec.data(), 0, nullptr);
 		IMesh::MeshPtr mesh = objPtr->GetMeshPtr();

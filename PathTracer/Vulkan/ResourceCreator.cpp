@@ -45,7 +45,7 @@ IImage::ImagePtr ResourceCreator::CreateImageFromFile(std::string imageFile)
 {
 	if (imageFile == "")
 	{
-		imageFile = "./../../Asset/Dst/red.data";
+		imageFile = "./../../Asset/Dst/black.data";
 	}
 	if (imageMap.find(imageFile) != imageMap.end())
 	{
@@ -133,6 +133,10 @@ IMesh::MeshPtr ResourceCreator::CreateMeshFromFile(std::string modelDataFile, st
 			meshChannels.push_back(ImportMeshData::MeshDataChannel::UV0);
 		else if (input.name == "inTexCoord2")
 			meshChannels.push_back(ImportMeshData::MeshDataChannel::UV1);
+		else if (input.name == "inTangent")
+			meshChannels.push_back(ImportMeshData::MeshDataChannel::Tangent);
+		else if (input.name == "inBiTangent")
+			meshChannels.push_back(ImportMeshData::MeshDataChannel::BiTangent);
 		else
 		{
 			if (input.format == "float+2")
