@@ -46,6 +46,7 @@ void VulkanMaterial::MergeShaderParams()
 	VulkanShaderParams totalParams = {};
 	if (mShader.VertexShader) totalParams += std::static_pointer_cast<VulkanShader>(mShader.VertexShader)->GetShaderParams();
 	if (mShader.FragmentShader) totalParams += std::static_pointer_cast<VulkanShader>(mShader.FragmentShader)->GetShaderParams();
+	if (mShader.GeometryShader) totalParams += std::static_pointer_cast<VulkanShader>(mShader.GeometryShader)->GetShaderParams();
 	totalParams.Sort();
 
 	auto AddParams = [&](ShaderBlockInfo & block, ShaderParameter& param, MaterialParams& allParams)->void
@@ -188,6 +189,7 @@ void VulkanMaterial::CreateVulkanDescLayout()
 
 	AddShader(std::static_pointer_cast<VulkanShader>(mShader.VertexShader), VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT);
 	AddShader(std::static_pointer_cast<VulkanShader>(mShader.FragmentShader), VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT);
+	AddShader(std::static_pointer_cast<VulkanShader>(mShader.GeometryShader), VkShaderStageFlagBits::VK_SHADER_STAGE_GEOMETRY_BIT);
 
 	CreateUniformBuffers(descSetLayoutMap, descBindingSizeMap);
 
@@ -207,13 +209,17 @@ void VulkanMaterial::CreateVulkanDescSet()
 {
 	mUniformBufferPoolSize.descriptorCount *= gSwapChainImageCount;
 	mImageSamplerPoolSize.descriptorCount *= gSwapChainImageCount;
-	VkDescriptorPoolSize descPoolSize[2] = { mUniformBufferPoolSize , mImageSamplerPoolSize };
+	std::vector<VkDescriptorPoolSize> descPoolSize;
+	if (mUniformBufferPoolSize.descriptorCount != 0)
+		descPoolSize.push_back(mUniformBufferPoolSize);
+	if (mImageSamplerPoolSize.descriptorCount != 0)
+		descPoolSize.push_back(mImageSamplerPoolSize);
 
 	VkDescriptorPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolInfo.maxSets = mVKDescSetLayoutVec.size() * gSwapChainImageCount;
-	poolInfo.poolSizeCount = 2;
-	poolInfo.pPoolSizes = descPoolSize;
+	poolInfo.poolSizeCount = descPoolSize.size();
+	poolInfo.pPoolSizes = descPoolSize.data();
 	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 	VKFUNC(vkCreateDescriptorPool(gVulkanDevice, &poolInfo, nullptr, &mDescriptorPool), "Create Descriptor Pool Failed.");
 
@@ -277,6 +283,12 @@ void VulkanMaterial::CreateShaderStageInfo()
 	{
 		shaderStageCreateInfo.stage = VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
 		shaderStageCreateInfo.module = *reinterpret_cast<VkShaderModule*>(mShader.FragmentShader->GetGPUShaderHandleAddress());
+		mShaderStageInfoVec.push_back(shaderStageCreateInfo);
+	}
+	if (mShader.GeometryShader)
+	{
+		shaderStageCreateInfo.stage = VkShaderStageFlagBits::VK_SHADER_STAGE_GEOMETRY_BIT;
+		shaderStageCreateInfo.module = *reinterpret_cast<VkShaderModule*>(mShader.GeometryShader->GetGPUShaderHandleAddress());
 		mShaderStageInfoVec.push_back(shaderStageCreateInfo);
 	}
 }
@@ -386,7 +398,7 @@ VkPipelineInputAssemblyStateCreateInfo VulkanMaterial::GetInputAssemblyStateCrea
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo = {};
 	inputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
-	inputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 	return inputAssemblyStateCreateInfo;
 }
 
@@ -408,10 +420,20 @@ VkPipelineVertexInputStateCreateInfo VulkanMaterial::GetVertexInputStateCreateIn
 	bindingDesc = shader->GetInputBindingDescription(attributeDescVec);
 	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {};
 	vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputStateCreateInfo.pVertexAttributeDescriptions = attributeDescVec.data();
-	vertexInputStateCreateInfo.vertexAttributeDescriptionCount = attributeDescVec.size();
-	vertexInputStateCreateInfo.pVertexBindingDescriptions = &bindingDesc;
-	vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+	if (bindingDesc.stride != 0)
+	{
+		vertexInputStateCreateInfo.pVertexAttributeDescriptions = attributeDescVec.data();
+		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = attributeDescVec.size();
+		vertexInputStateCreateInfo.pVertexBindingDescriptions = &bindingDesc;
+		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+	}
+	else
+	{
+		vertexInputStateCreateInfo.pVertexAttributeDescriptions = nullptr;
+		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 0;
+		vertexInputStateCreateInfo.pVertexBindingDescriptions = nullptr;
+		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 0;
+	}
 	return vertexInputStateCreateInfo;
 }
 
@@ -423,7 +445,7 @@ VkPipelineRasterizationStateCreateInfo VulkanMaterial::GetRasterizationStateCrea
 	createInfo.rasterizerDiscardEnable = VK_FALSE;
 	createInfo.polygonMode = VK_POLYGON_MODE_FILL;
 	createInfo.lineWidth = 1.0f;
-	createInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+	createInfo.cullMode = VK_CULL_MODE_NONE;
 	createInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	createInfo.depthBiasEnable = VK_FALSE;
 	return createInfo;

@@ -14,6 +14,8 @@ public:
 private:
 	Camera mMainCamera;
 	Light mLights[MAX_LIGHT];
+	Vec3 mMinPoint;
+	Vec3 mMaxPoint;
 
 private:
 	void SetCameraDefault(const ImportSceneData& sceneData);
@@ -21,8 +23,10 @@ private:
 	
 public:
 	Vec3 GetCameraPosition() const { return mMainCamera.GetPosition(); }
+	void GetVoxelizationParams(int& dimension, Matrix& viewProj, float& voxelSize, Vec3& worldMinPoint);
 	Light GetLight(int index);
 	Matrix GetViewMatrix();
 	Matrix GetProjMatrix();
 	void Update();
+
 };

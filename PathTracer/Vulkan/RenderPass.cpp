@@ -307,24 +307,34 @@ VkCommandBuffer VulkanRenderingNode::RecordCommandBuffer(int frameIndex, VkRende
 	mat->Update(frameIndex);
 	int descCount;
 	std::vector<VkDescriptorSet> descSetVec = mat->GetDescriptorSet(frameIndex, descCount);
-	descSetVec.push_back(VK_NULL_HANDLE);
-
-	for (auto objPtr : mObject)
+	if (mObject.empty())
 	{
-		objPtr->Update(frameIndex);
-		descSetVec[descSetVec.size() - 1] = objPtr->GetDescSet(frameIndex);
-		vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, descSetVec.size(), descSetVec.data(), 0, nullptr);
-		IMesh::MeshPtr mesh = objPtr->GetMeshPtr();
-		int vertCount = mesh->GetVertexCount();
-		int indCount = mesh->GetIndexCount();
-		int indDataSize = mesh->GetIndexBufferDataSize();
-		VkBuffer* vertBuffer = reinterpret_cast<VkBuffer*>(mesh->GetVertexBufferGPUHandleAddress());
-		VkBuffer* indBuffer = reinterpret_cast<VkBuffer*>(mesh->GetIndexBufferGPUHandleAddress());
 		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertBuffer, offsets);
-		vkCmdBindIndexBuffer(commandBuffer, *indBuffer, 0, indDataSize == sizeof(UInt16) ? VkIndexType::VK_INDEX_TYPE_UINT16 : VkIndexType::VK_INDEX_TYPE_UINT32);
-		vkCmdDrawIndexed(commandBuffer, indCount, 1, 0, 0, 0);
+		vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, descSetVec.size(), descSetVec.data(), 0, nullptr);
+		//vkCmdBindVertexBuffers(commandBuffer, 0, 1, VK_NULL_HANDLE, offsets);
+		vkCmdDraw(commandBuffer, mEmptyVertexCount, 1, 0, 0);
 	}
+	else 
+	{
+		descSetVec.push_back(VK_NULL_HANDLE);
+		for (auto objPtr : mObject)
+		{
+			objPtr->Update(frameIndex);
+			descSetVec[descSetVec.size() - 1] = objPtr->GetDescSet(frameIndex);
+			vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, descSetVec.size(), descSetVec.data(), 0, nullptr);
+			IMesh::MeshPtr mesh = objPtr->GetMeshPtr();
+			int vertCount = mesh->GetVertexCount();
+			int indCount = mesh->GetIndexCount();
+			int indDataSize = mesh->GetIndexBufferDataSize();
+			VkBuffer* vertBuffer = reinterpret_cast<VkBuffer*>(mesh->GetVertexBufferGPUHandleAddress());
+			VkBuffer* indBuffer = reinterpret_cast<VkBuffer*>(mesh->GetIndexBufferGPUHandleAddress());
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertBuffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffer, *indBuffer, 0, indDataSize == sizeof(UInt16) ? VkIndexType::VK_INDEX_TYPE_UINT16 : VkIndexType::VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(commandBuffer, indCount, 1, 0, 0, 0);
+		}
+	}
+
 	gPipelineGraphicsSecondaryCommandBufferPool->EndCommandBuffer(commandBuffer);
 	return commandBuffer;
 }
@@ -334,6 +344,7 @@ VulkanRenderingNode::VulkanRenderingNode(RenderingNodeDesc desc, VkRenderPass re
 	CreatePipeline(desc, renderPass, blendState);
 	mMaterialAddr = desc.MaterialAddr;
 	mObject = desc.Object;
+	mEmptyVertexCount = desc.EmptyVertexCount;
 	GenerateCommandBuffer();
 }
 

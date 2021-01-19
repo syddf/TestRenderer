@@ -30,7 +30,7 @@ layout(set = 0, binding = 4) uniform WorldObject
 vec3 NormalMap()
 {
     vec3 nNormal = texture(tNormal, fragTexCoord.xy).rgb;
-    if(nNormal.z == 0.0f) return normalize(fragNormal);
+    if(nNormal.z == 0.0f || fragTexCoord.x > 1.0f || fragTexCoord.x < 0.0f || fragTexCoord.y > 1.0f || fragTexCoord.y < 0.0f) return normalize(fragNormal);
     vec3 normal = normalize(fragNormal);
     vec3 tang = normalize(fragTangent);
     vec3 bTang = normalize(fragBiTangent);

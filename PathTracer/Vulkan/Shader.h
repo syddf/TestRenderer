@@ -6,6 +6,7 @@ enum VulkanShaderType
 {
 	VertexShader,
 	FragmentShader,
+	GeometryShader,
 	ComputeShader
 };
 

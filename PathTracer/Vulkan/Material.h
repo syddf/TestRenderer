@@ -6,6 +6,7 @@ struct VulkanMaterialShader
 {
 	IShader::ShaderPtr VertexShader;
 	IShader::ShaderPtr FragmentShader;
+	IShader::ShaderPtr GeometryShader;
 };
 
 class VulkanMaterial

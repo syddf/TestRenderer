@@ -45,10 +45,10 @@ void Camera::SetParams(float aspect, float near, float far, float fov, Vec3 look
 
 void Camera::UpdateViewTransform()
 {
-	mViewTransform = glm::lookAtRH(mPos, mPos + mLookAt,  mUp);
+	mViewTransform = glm::lookAt(mPos, mPos + mLookAt,  mUp);
 }
 
 void Camera::UpdateProjTransform()
 {
-	mProjTransform = glm::perspectiveRH(mFOV, mAspectRatio, mPlaneNear, mPlaneFar);
+	mProjTransform = glm::perspective(mFOV, mAspectRatio, mPlaneNear, mPlaneFar);
 }

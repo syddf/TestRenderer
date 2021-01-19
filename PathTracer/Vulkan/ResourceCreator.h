@@ -20,7 +20,7 @@ public:
 	static IImage::ImagePtr CreateImageFromFile(std::string imageFile);
 	static IBuffer::BufferPtr CreateVertexBuffer(char* bufferData, UInt32 bufferSize);
 	static IBuffer::BufferPtr CreateIndexBuffer(char* bufferData, UInt32 bufferSize);
-	static VulkanMaterial::MaterialPtr CreateMaterial(std::string materialName, std::string vertexShader = "", std::string fragmentShader = "");
+	static VulkanMaterial::MaterialPtr CreateMaterial(std::string materialName, std::string vertexShader = "", std::string fragmentShader = "", std::string geometryShader = "");
 	static IMesh::MeshPtr CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex, std::string modelName);
 	static IMesh::MeshPtr GetExportedMesh(std::string meshName);
 	static VulkanAttachment::AttachmentPtr CreateDepthStencilAttachment(std::string name, int width, int height);

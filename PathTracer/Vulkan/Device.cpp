@@ -247,6 +247,7 @@ void VulkanDevice::InitializeLogicalDevice()
 	createInfo.pQueueCreateInfos = queueCreateInfoVec.data();
 	createInfo.queueCreateInfoCount = queueCreateInfoVec.size();
 	VkPhysicalDeviceFeatures deviceFeatures{};
+	deviceFeatures.geometryShader = VK_TRUE;
 	createInfo.pEnabledFeatures = &deviceFeatures;
 	createInfo.enabledExtensionCount = 0;
 	const std::vector<const char*> validationLayers =

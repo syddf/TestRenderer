@@ -8,6 +8,7 @@ struct RenderingNodeDesc
 {
 	char* MaterialAddr;
 	std::vector<WorldObject::ObjectPtr> Object;
+	int EmptyVertexCount;
 };
 
 struct RenderingPipelineNodeDesc
@@ -44,6 +45,7 @@ private:
 	std::vector<WorldObject::ObjectPtr> mObject;
 	std::vector<VkCommandBuffer> mCommandBuffer;
 	std::vector<bool> mDirty;
+	int mEmptyVertexCount;
 };
 
 class VulkanPipelineNode : public IRenderingPipelineNode

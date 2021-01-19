@@ -10,7 +10,7 @@ VulkanSceneData::~VulkanSceneData()
 {
 }
 
-std::vector<RenderingNodeDesc> VulkanSceneData::ExportAllRenderingNodeByMaterial(std::string vertexShaderFile, std::string fragShaderFile, std::string scenePrefix)
+std::vector<RenderingNodeDesc> VulkanSceneData::ExportAllRenderingNodeByMaterial(std::string vertexShaderFile, std::string fragShaderFile, std::string geometryShaderFile, std::string scenePrefix)
 {
 	std::vector<RenderingNodeDesc> renderingNodeVec;
 	auto meshData = ResourceCreator::GetAsset<ImportSceneData>(mSceneFile);
@@ -20,7 +20,7 @@ std::vector<RenderingNodeDesc> VulkanSceneData::ExportAllRenderingNodeByMaterial
 	for (auto material : materialVec)
 	{
 		std::string materialName = this->GetSceneMaterialName(matIndex, scenePrefix);
-		auto mat = ResourceCreator::CreateMaterial(materialName, vertexShaderFile, fragShaderFile);
+		auto mat = ResourceCreator::CreateMaterial(materialName, vertexShaderFile, fragShaderFile, geometryShaderFile);
 		if (material.TexturePath[TextureType::Diffuse] != "")
 			mat->SetImage("tDiffuse", material.TexturePath[TextureType::Diffuse]);	
 		if (material.TexturePath[TextureType::Specular] != "")
@@ -82,14 +82,28 @@ std::string VulkanSceneData::GetSceneObjectName(int index, std::string prefix)
 	return prefix + std::string("_object_") + std::to_string(index);
 }
 
+void VulkanSceneData::AddUpdateMaterial(std::string materialName)
+{
+	auto material = ResourceCreator::CreateMaterial(materialName);
+	mUpdateSceneDataMaterialVec.push_back(material);
+}
+
 void VulkanSceneData::UpdateSceneData()
 {
 	mWorldData->Update();
 	Matrix viewMat = mWorldData->GetViewMatrix();
 	Matrix projMat = mWorldData->GetProjMatrix();
 	Light testLight = mWorldData->GetLight(0);
+
+	float voxelSize;
+	Vec3 minPoint;
+	Matrix viewProj;
+	int dimension;
+	mWorldData->GetVoxelizationParams(dimension, viewProj, voxelSize, minPoint);
+
 	for(auto material : mUpdateSceneDataMaterialVec)
 	{
+		/*
 		material->SetMatrix("view", viewMat);
 		material->SetMatrix("proj", projMat);
 		material->SetFloat3("lights[0].diffuse", testLight.mDiffuse);
@@ -97,6 +111,12 @@ void VulkanSceneData::UpdateSceneData()
 		material->SetFloat3("lights[0].position", testLight.mPosition);
 		material->SetFloat3("lights[0].direction", testLight.mDirection);		
 		material->SetFloat3("uCameraPosition", mWorldData->GetCameraPosition());
+		*/
+		material->SetFloat("voxelSize", voxelSize);
+		material->SetFloat3("worldMinPoint", minPoint);
+		material->SetMatrix("view", viewMat);
+		material->SetMatrix("proj", projMat);
+		material->SetFloat("dimension", dimension);
 	}
 }
 

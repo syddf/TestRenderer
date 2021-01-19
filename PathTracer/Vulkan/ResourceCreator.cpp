@@ -98,7 +98,7 @@ IBuffer::BufferPtr ResourceCreator::CreateIndexBuffer(char * bufferData, UInt32 
 	return indexBuffer;
 }
 
-VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string materialName, std::string vertexShader, std::string fragmentShader)
+VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string materialName, std::string vertexShader, std::string fragmentShader, std::string geometryShader)
 {
 	if (materialMap.find(materialName) != materialMap.end())
 	{
@@ -107,6 +107,7 @@ VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string material
 	VulkanMaterialShader materialShader = {};
 	materialShader.VertexShader = CreateShaderFromFile(vertexShader);
 	materialShader.FragmentShader = CreateShaderFromFile(fragmentShader);
+	materialShader.GeometryShader = CreateShaderFromFile(geometryShader);
 	materialMap[materialName] = std::make_shared<VulkanMaterial>(materialShader);
 	return materialMap[materialName];
 }
@@ -225,6 +226,7 @@ void ResourceCreator::SaveAttachment(std::string attachmentName, VulkanAttachmen
 
 VulkanShader::VulkanShaderPtr ResourceCreator::CreateShaderFromFile(std::string shaderFile)
 {
+	if (shaderFile == "") return nullptr;
 	if (shaderMap.find(shaderFile) == shaderMap.end())
 	{
 		ImportSPIRVShaderData* shaderData = new ImportSPIRVShaderData();
