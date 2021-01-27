@@ -14,13 +14,15 @@ enum TextureDimension
 enum TextureFormat
 {
 	TF_UNDEFINED,
-	TF_R8,
+	TF_R8SRGB,
 	TF_R8G8B8A8UInt,
 	TF_R8G8B8SRGB,
 	TF_R8G8B8A8SRGB,
 	TF_B8G8R8A8SRGB,
 	TF_R32G32B32A32SFloat,
-	TF_D24US8
+	TF_D24US8,
+	TF_R8UInt,
+	TF_R32UInt
 };
 
 enum AttachmentOperator
@@ -157,6 +159,8 @@ struct ImageParam
 	int Set;
 	int Binding;
 	int ArrayIndex;
+	bool InnerImage;
+	std::string Format;
 	std::string Value;
 };
 

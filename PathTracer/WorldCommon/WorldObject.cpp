@@ -26,6 +26,8 @@ WorldObject::WorldObject(std::string materialName, std::string modelName, std::s
 
 WorldObject::~WorldObject()
 {
+	vkFreeDescriptorSets(gVulkanDevice, mMaterialResource.DescPool, mMaterialResource.DescSet.size(), mMaterialResource.DescSet.data());
+	vkDestroyDescriptorPool(gVulkanDevice, mMaterialResource.DescPool, nullptr);
 }
 
 void WorldObject::SetPosition(float x, float y, float z)
@@ -94,6 +96,8 @@ IMesh::MeshPtr WorldObject::GetMeshPtr()
 
 VkDescriptorSet WorldObject::GetDescSet(int frameIndex)
 {
+	if (mMaterialResource.DescSet.size() == 0)
+		return VK_NULL_HANDLE;
 	return mMaterialResource.DescSet[frameIndex];
 }
 

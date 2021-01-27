@@ -4,6 +4,7 @@ VulkanSceneData::VulkanSceneData(std::string modelFile)
 {
 	mSceneFile = modelFile;
 	mWorldData = std::make_shared<World>(*ResourceCreator::GetAsset<ImportSceneData>(mSceneFile));
+	mWorldData->AddMaterialParams(ResourceCreator::CreateMaterial("test3"));
 }
 
 VulkanSceneData::~VulkanSceneData()

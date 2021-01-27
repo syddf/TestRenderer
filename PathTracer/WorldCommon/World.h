@@ -5,6 +5,21 @@
 #include "WorldObject.h"
 #define MAX_LIGHT 256
 
+struct WorldMaterialResource
+{
+	VkDescriptorSetLayout SetLayout;
+	VkDescriptorPool DescPool;
+	std::vector<VkDescriptorSet> DescSet;
+	MaterialParams Params;
+	std::vector<std::map<int, IBuffer::BufferPtr>> CBuffer;
+	std::vector<std::map<int, IImage::ImagePtr>> InnerImage;
+};
+
+struct WorldParams
+{
+	int VoxelDimension;
+};
+
 class World
 {
 public:
@@ -28,5 +43,10 @@ public:
 	Matrix GetViewMatrix();
 	Matrix GetProjMatrix();
 	void Update();
+	void AddMaterialParams(VulkanMaterial::MaterialPtr material);
+	VkDescriptorSet GetWorldParamsSet(VulkanMaterial* material, int frameIndex);
 
+private:
+	std::map<std::string, WorldMaterialResource> mWorldMaterialParams;
+	WorldParams mWorldParams;
 };

@@ -3,12 +3,14 @@
 #include "./../GraphicsAPICommon/GraphicsInterface.h"
 #include "VulkanAttachment.h"
 #include "./../WorldCommon/WorldObject.h"
+#include "./../WorldCommon/World.h"
 
 struct RenderingNodeDesc
 {
 	char* MaterialAddr;
 	std::vector<WorldObject::ObjectPtr> Object;
 	int EmptyVertexCount;
+	World* World;
 };
 
 struct RenderingPipelineNodeDesc
@@ -42,6 +44,7 @@ private:
 	VkPipelineLayout mPipelineLayout;
 	VkPipeline mPipeline;
 	char* mMaterialAddr;
+	World* mWorld;
 	std::vector<WorldObject::ObjectPtr> mObject;
 	std::vector<VkCommandBuffer> mCommandBuffer;
 	std::vector<bool> mDirty;

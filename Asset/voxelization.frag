@@ -22,10 +22,10 @@ layout(set = 1, binding = 1) uniform ObjectParams
    float staticVoxelFlag;
 } voxelParams;
 
-layout(set = 2, binding = 0, r32ui) uniform uimage3D voxelAlbedo;
-layout(set = 2, binding = 1, r32ui) uniform uimage3D voxelNormal;
-layout(set = 2, binding = 2, r32ui) uniform uimage3D voxelEmission;
-layout(set = 2, binding = 3, r8) uniform image3D staticVoxelFlag;
+layout(set = 2, binding = 0, r32ui) uniform uimage3D voxelAlbedo_IN;
+layout(set = 2, binding = 1, r32ui) uniform uimage3D voxelNormal_IN;
+layout(set = 2, binding = 2, r32ui) uniform uimage3D voxelEmission_IN;
+layout(set = 2, binding = 3, r8) uniform image3D staticVoxelFlag_IN;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -53,7 +53,7 @@ void imageAtomicRGBA8AvgEmission(ivec3 coords, vec4 value)
     uint curStoredVal;
     uint numIterations = 0;
 
-    while((curStoredVal = imageAtomicCompSwap(voxelEmission, coords, prevStoredVal, newVal)) 
+    while((curStoredVal = imageAtomicCompSwap(voxelEmission_IN, coords, prevStoredVal, newVal)) 
             != prevStoredVal
             && numIterations < 255)
     {
@@ -76,7 +76,7 @@ void imageAtomicRGBA8AvgAlbedo(ivec3 coords, vec4 value)
     uint curStoredVal;
     uint numIterations = 0;
 
-    while((curStoredVal = imageAtomicCompSwap(voxelAlbedo, coords, prevStoredVal, newVal)) 
+    while((curStoredVal = imageAtomicCompSwap(voxelAlbedo_IN, coords, prevStoredVal, newVal)) 
             != prevStoredVal
             && numIterations < 255)
     {
@@ -99,7 +99,7 @@ void imageAtomicRGBA8AvgNormal(ivec3 coords, vec4 value)
     uint curStoredVal;
     uint numIterations = 0;
 
-    while((curStoredVal = imageAtomicCompSwap(voxelNormal, coords, prevStoredVal, newVal)) 
+    while((curStoredVal = imageAtomicCompSwap(voxelNormal_IN, coords, prevStoredVal, newVal)) 
             != prevStoredVal
             && numIterations < 255)
     {
@@ -136,7 +136,7 @@ void main()
 	float opacity = min(albedo.a, texture(opacityMap, inTexCoord.xy).r);
     	if(voxelParams.staticVoxelFlag > 0)
 	{
-		bool isStatic = imageLoad(staticVoxelFlag, position).r > 0.0f;
+		bool isStatic = imageLoad(staticVoxelFlag_IN, position).r > 0.0f;
 		if(isStatic)
 		{
         			opacity = 0.0f;
@@ -155,11 +155,11 @@ void main()
         		imageAtomicRGBA8AvgEmission(position, emissive);
         		if(voxelParams.staticVoxelFlag > 0.0f)
         		{
-            			imageStore(staticVoxelFlag, position, vec4(1.0));
+            			imageStore(staticVoxelFlag_IN, position, vec4(1.0));
         		}
 		else
 		{
-            			imageStore(staticVoxelFlag, position, vec4(0.0));
+            			imageStore(staticVoxelFlag_IN, position, vec4(0.0));
 		}
 	}
 }

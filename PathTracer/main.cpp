@@ -27,6 +27,7 @@ VulkanPresentEngine* presentEngine;
 
 void test(VkQueue graphicsQueue, VulkanWindow* window)
 {
+	auto ttmaterial = ResourceCreator::CreateMaterial("test3", "D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data");
 	auto tmaterial = ResourceCreator::CreateMaterial("test2", "D:\\OfflineRenderer\\Asset\\renderVoxelVert.data", "D:\\OfflineRenderer\\Asset\\renderVoxelFrag.data", "D:\\OfflineRenderer\\Asset\\renderVoxelGeom.data");
 	auto material = ResourceCreator::CreateMaterial("test1", "D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data");
 	
@@ -83,9 +84,9 @@ void compileShader()
 {
 	std::vector<std::string> shaderFiles = 
 	{
-		"renderVoxel.vert",
-		"renderVoxel.frag",
-		"renderVoxel.geom"
+		"voxelization.vert",
+		"voxelization.frag",
+		"voxelization.geom"
 	};
 	std::vector<std::string> newShaderPathVec;
 	char buffer[MAXPATH];

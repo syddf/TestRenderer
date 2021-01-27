@@ -12,7 +12,7 @@ struct VulkanMaterialShader
 class VulkanMaterial
 {
 public:
-	VulkanMaterial(VulkanMaterialShader materialShader);
+	VulkanMaterial(VulkanMaterialShader materialShader, std::string shaderGroupName);
 	~VulkanMaterial();
 	using MaterialPtr = std::shared_ptr<VulkanMaterial>;
 
@@ -48,6 +48,7 @@ public:
 	std::vector<VkDescriptorSet> GetDescriptorSet(int frameIndex, int& descCount);
 
 public:
+	std::string GetShaderGroupName() const { return mShaderGroupName; }
 	void SetFloat4(std::string paramName, Vec4 value);
 	void SetFloat3(std::string paramName, Vec3 value);
 	void SetFloat(std::string paramName, float value);
@@ -57,7 +58,9 @@ public:
 	void Update(int frameIndex);
 	void TranslateImageLayout(int frameIndex, VkCommandBuffer commandBuffer);
 
+	void ExportOtherRateDescriptor(VkDescriptorSetLayout& setLayout, VkDescriptorPool& descPool, std::vector<VkDescriptorSet>& descSet, MaterialParams& params, std::vector<std::map<int, IBuffer::BufferPtr>>& cBuffer, int descSetIndex);
 	void ExportPerObjectDescriptor(VkDescriptorSetLayout& setLayout, VkDescriptorPool& descPool, std::vector<VkDescriptorSet>& descSet, MaterialParams& params, std::vector<std::map<int, IBuffer::BufferPtr>>& cBuffer);
+	void ExportPerCameraDescriptor(VkDescriptorSetLayout& setLayout, VkDescriptorPool& descPool, std::vector<VkDescriptorSet>& descSet, MaterialParams& params, std::vector<std::map<int, IBuffer::BufferPtr>>& cBuffer);
 
 private:
 	std::vector<bool> mConstantBufferDirty;
@@ -66,6 +69,7 @@ private:
 private:
 	MaterialParams mParams;
 	MaterialParams mPerObjectParams;
+	MaterialParams mPerCameraParams;
 	VulkanMaterialShader mShader;
 	MaterialMode mMaterialMode;
 
@@ -77,11 +81,18 @@ private:
 	VkDescriptorPoolSize mImageSamplerPoolSize;
 	VkDescriptorPoolSize mPerObjectUniformBufferPoolSize;
 	VkDescriptorPoolSize mPerObjectImageSamplerPoolSize;
+	VkDescriptorPoolSize mPerCameraUniformBufferPoolSize;
+	VkDescriptorPoolSize mPerCameraImageSamplerPoolSize;
 
 	std::vector<VkDescriptorSetLayoutBinding> mPerObjectBindingVec;
 	std::vector<int> mPerObjectBindingSize;
 
+	std::vector<VkDescriptorSetLayoutBinding> mPerCameraBindingVec;
+	std::vector<int> mPerCameraBindingSize;
+
 	VkDescriptorPool mDescriptorPool;
 	std::vector<VkDescriptorSet> mVKDescSetVec;
 	std::vector<std::map<int, std::map<int, IBuffer::BufferPtr>>> mMaterialUniformBuffer;
+
+	std::string mShaderGroupName;
 };

@@ -265,6 +265,7 @@ void SPIRVImporter::ProcessOpType(short op, const std::vector<SPIRVWord>& operan
 		opType.dimension = operands[2].wordValue;
 		opType.arrayed = operands[4].wordValue;
 		opType.combineSampled = operands[5].wordValue;
+		opType.parentType = operands[7].wordValue;
 		mSPIRVGlobalState.OpType[id] = opType;
 	}
 	else if (op == 26)
@@ -397,6 +398,12 @@ void SPIRVImporter::ExportAllBlock(ImportAsset* ImportAsset)
 			std::string blockName = mSPIRVGlobalState.OpNames[blockId].name;
 			ExportImageShaderParameters(imageTypeId, 0, newBlockInfo.ParamsVec, blockName);
 		}
+		else if (mSPIRVGlobalState.OpType[typeId].typeEnum == SPIRV_TypeEnum::TE_Image)
+		{
+			newBlockInfo.StructBuffer = false;
+			std::string blockName = mSPIRVGlobalState.OpNames[blockId].name;
+			ExportImageShaderParameters(typeId, 0, newBlockInfo.ParamsVec, blockName);
+		}
 		else if (mSPIRVGlobalState.OpType[typeId].typeEnum == SPIRV_TypeEnum::TE_Array)
 		{
 			auto parentType = mSPIRVGlobalState.OpType[mSPIRVGlobalState.OpType[typeId].parentType];
@@ -523,10 +530,15 @@ void SPIRVImporter::ExportValueShaderParameters(int structId, int offset, std::v
 
 void SPIRVImporter::ExportImageShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string & namePrefix)
 {
-	auto imageType = mSPIRVGlobalState.OpType[structId];
-	auto imageFormatType = mSPIRVGlobalState.OpType[imageType.sampleTypeId];
+	static std::map<int, std::string> imageFormatMap = 
+	{
+		{ 0, "Unknown"},
+		{ 15, "R8"},
+		{ 33, "R32ui"}
+	};
+	auto imageType = mSPIRVGlobalState.OpType[structId];	
 	ShaderParameter newParameter;
-	newParameter.Format = "Texture+" + sDimensionNameMap[imageType.dimension];
+	newParameter.Format = "Texture+" + sDimensionNameMap[imageType.dimension] + "+" + imageFormatMap[imageType.parentType];
 	newParameter.Name = namePrefix;
 	paramsVec.push_back(newParameter);
 }

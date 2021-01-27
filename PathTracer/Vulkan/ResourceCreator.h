@@ -34,11 +34,19 @@ public:
 	static TextureFormat GetImageImportDataFormat(int channel)
 	{
 		if (channel == 1)
-			return TextureFormat::TF_R8;
+			return TextureFormat::TF_R8SRGB;
 		if (channel == 3)
 			return TextureFormat::TF_R8G8B8SRGB;
 		else if (channel == 4)
 			return TextureFormat::TF_R8G8B8A8SRGB;
+		return TextureFormat::TF_UNDEFINED;
+	}
+	static TextureFormat GetInnerImageDataFormat(std::string format)
+	{
+		if (format == "R32ui")
+			return TextureFormat::TF_R32UInt;
+		else if (format == "R8")
+			return TextureFormat::TF_R8SRGB;
 		return TextureFormat::TF_UNDEFINED;
 	}
 	static void DestroyCachingResource();

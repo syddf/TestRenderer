@@ -316,11 +316,16 @@ VkCommandBuffer VulkanRenderingNode::RecordCommandBuffer(int frameIndex, VkRende
 	}
 	else 
 	{
-		descSetVec.push_back(VK_NULL_HANDLE);
+		std::vector<VkDescriptorSet> submitDescSetVec = descSetVec;
 		for (auto objPtr : mObject)
 		{
 			objPtr->Update(frameIndex);
-			descSetVec[descSetVec.size() - 1] = objPtr->GetDescSet(frameIndex);
+			VkDescriptorSet objSet = objPtr->GetDescSet(frameIndex);
+			if (objSet != VK_NULL_HANDLE)
+				descSetVec.push_back(objSet);
+			VkDescriptorSet worldSet = mWorld->GetWorldParamsSet(mat, frameIndex);
+			if (worldSet != VK_NULL_HANDLE)
+				descSetVec.push_back(worldSet);
 			vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, descSetVec.size(), descSetVec.data(), 0, nullptr);
 			IMesh::MeshPtr mesh = objPtr->GetMeshPtr();
 			int vertCount = mesh->GetVertexCount();
@@ -346,6 +351,7 @@ VulkanRenderingNode::VulkanRenderingNode(RenderingNodeDesc desc, VkRenderPass re
 	mObject = desc.Object;
 	mEmptyVertexCount = desc.EmptyVertexCount;
 	GenerateCommandBuffer();
+	mWorld = desc.World;
 }
 
 VulkanRenderingNode::~VulkanRenderingNode()
