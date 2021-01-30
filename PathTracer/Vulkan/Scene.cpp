@@ -4,7 +4,6 @@ VulkanSceneData::VulkanSceneData(std::string modelFile)
 {
 	mSceneFile = modelFile;
 	mWorldData = std::make_shared<World>(*ResourceCreator::GetAsset<ImportSceneData>(mSceneFile));
-	mWorldData->AddMaterialParams(ResourceCreator::CreateMaterial("test3"));
 }
 
 VulkanSceneData::~VulkanSceneData()
@@ -18,18 +17,27 @@ std::vector<RenderingNodeDesc> VulkanSceneData::ExportAllRenderingNodeByMaterial
 	auto& materialVec = meshData->MaterialData.MaterialVec;
 	int matIndex = 0;
 	renderingNodeVec.resize(materialVec.size());
+	for (auto& renderingNode : renderingNodeVec)
+	{
+		renderingNode.World = mWorldData.get();
+	}
 	for (auto material : materialVec)
 	{
 		std::string materialName = this->GetSceneMaterialName(matIndex, scenePrefix);
 		auto mat = ResourceCreator::CreateMaterial(materialName, vertexShaderFile, fragShaderFile, geometryShaderFile);
+		mWorldData->AddMaterialParams(mat);
 		if (material.TexturePath[TextureType::Diffuse] != "")
-			mat->SetImage("tDiffuse", material.TexturePath[TextureType::Diffuse]);	
+			if(mat->HasImageParam("tDiffuse"))
+				mat->SetImage("tDiffuse", material.TexturePath[TextureType::Diffuse]);	
 		if (material.TexturePath[TextureType::Specular] != "")
-			mat->SetImage("tSpecular", material.TexturePath[TextureType::Specular]);
+			if (mat->HasImageParam("tSpecular"))
+				mat->SetImage("tSpecular", material.TexturePath[TextureType::Specular]);
 		if (material.TexturePath[TextureType::Height] != "")
-			mat->SetImage("tNormal", material.TexturePath[TextureType::Height]);
+			if (mat->HasImageParam("tNormal"))
+				mat->SetImage("tNormal", material.TexturePath[TextureType::Height]);
 		else if (material.TexturePath[TextureType::Normals] != "")
-			mat->SetImage("tNormal", material.TexturePath[TextureType::Normals]);
+			if (mat->HasImageParam("tNormal"))
+				mat->SetImage("tNormal", material.TexturePath[TextureType::Normals]);
 		renderingNodeVec[matIndex].MaterialAddr = (char*)(mat.get());
 		matIndex++;
 		mUpdateSceneDataMaterialVec.push_back(mat);
@@ -89,9 +97,9 @@ void VulkanSceneData::AddUpdateMaterial(std::string materialName)
 	mUpdateSceneDataMaterialVec.push_back(material);
 }
 
-void VulkanSceneData::UpdateSceneData()
+void VulkanSceneData::UpdateSceneData(int frameIndex)
 {
-	mWorldData->Update();
+	mWorldData->Update(frameIndex);
 	Matrix viewMat = mWorldData->GetViewMatrix();
 	Matrix projMat = mWorldData->GetProjMatrix();
 	Light testLight = mWorldData->GetLight(0);
@@ -113,11 +121,13 @@ void VulkanSceneData::UpdateSceneData()
 		material->SetFloat3("lights[0].direction", testLight.mDirection);		
 		material->SetFloat3("uCameraPosition", mWorldData->GetCameraPosition());
 		*/
+		/*
 		material->SetFloat("voxelSize", voxelSize);
 		material->SetFloat3("worldMinPoint", minPoint);
 		material->SetMatrix("view", viewMat);
 		material->SetMatrix("proj", projMat);
 		material->SetFloat("dimension", dimension);
+		*/
 	}
 }
 

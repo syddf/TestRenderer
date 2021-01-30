@@ -6,16 +6,9 @@ layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec4 inTriangleAABB;
 layout(location = 4) in vec2 inTexCoord;
 
-layout(set = 0, binding = 1) uniform VoxelParams
-{
-    vec3 worldMinPoint;
-    float voxelSize;
-    float volumeDimension;
-} params;
-
-layout(set = 0, binding = 2) uniform sampler2D diffuseMap;
-layout(set = 0, binding = 3) uniform sampler2D opacityMap;
-layout(set = 0, binding = 4) uniform sampler2D emissiveMap;
+layout(set = 0, binding = 0) uniform sampler2D tDiffuse;
+layout(set = 0, binding = 1) uniform sampler2D opacityMap;
+layout(set = 0, binding = 2) uniform sampler2D emissiveMap;
 
 layout(set = 1, binding = 1) uniform ObjectParams
 {
@@ -132,8 +125,8 @@ void main()
 	}
 
 	ivec3 position = ivec3(inWSPosition);
-	vec4 albedo = texture(diffuseMap, inTexCoord.xy);
-	float opacity = min(albedo.a, texture(opacityMap, inTexCoord.xy).r);
+	vec4 albedo = texture(tDiffuse, inTexCoord.xy);
+	float opacity = albedo.a;
     	if(voxelParams.staticVoxelFlag > 0)
 	{
 		bool isStatic = imageLoad(staticVoxelFlag_IN, position).r > 0.0f;

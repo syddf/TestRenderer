@@ -48,4 +48,5 @@ private:
 	void InitMaterialResource();
 	WorldObjectMaterialResource mMaterialResource;
 	std::vector<bool> mDirty;
+	bool mStatic;
 };

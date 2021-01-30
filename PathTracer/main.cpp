@@ -27,11 +27,11 @@ VulkanPresentEngine* presentEngine;
 
 void test(VkQueue graphicsQueue, VulkanWindow* window)
 {
-	auto ttmaterial = ResourceCreator::CreateMaterial("test3", "D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data");
-	auto tmaterial = ResourceCreator::CreateMaterial("test2", "D:\\OfflineRenderer\\Asset\\renderVoxelVert.data", "D:\\OfflineRenderer\\Asset\\renderVoxelFrag.data", "D:\\OfflineRenderer\\Asset\\renderVoxelGeom.data");
-	auto material = ResourceCreator::CreateMaterial("test1", "D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data");
+	//auto ttmaterial = ResourceCreator::CreateMaterial("test3", "D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data");
+	//auto tmaterial = ResourceCreator::CreateMaterial("test2", "D:\\OfflineRenderer\\Asset\\renderVoxelVert.data", "D:\\OfflineRenderer\\Asset\\renderVoxelFrag.data", "D:\\OfflineRenderer\\Asset\\renderVoxelGeom.data");
+	//auto material = ResourceCreator::CreateMaterial("test1", "D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data");
 	
-	VulkanSceneData * scene = new VulkanSceneData("C:\\Users\\syddfyuan\\Downloads\\VCTRenderer-master\\VCTRenderer-master\\engine\\assets\\models\\crytek-sponza\\res\\sponza.data");
+	VulkanSceneData * scene = new VulkanSceneData("D:\\Resource\\res\\sponza.data");
 	ResourceCreator::CreateDepthStencilAttachment("DepthStencilAttachment", gScreenWidth, gScreenHeight);
 	RenderingPipelineNodeDesc nodeDesc = {};
 	nodeDesc.NodeName = "testNode";
@@ -53,12 +53,12 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	attachDesc.Format = TextureFormat::TF_D24US8;
 	nodeDesc.FrameBufferLayoutDesc.AttachmentDesc.push_back(attachDesc);
 
-	//nodeDesc.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data", "", "Sponza");
-	RenderingNodeDesc voxelNode = {};
-	voxelNode.EmptyVertexCount = 64 * 64 * 64;
-	voxelNode.MaterialAddr = (char*)(tmaterial.get());
-	nodeDesc.RenderingNodeDescVec.push_back(voxelNode);
-	scene->AddUpdateMaterial("test2");
+	nodeDesc.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data", "Sponza");
+	//RenderingNodeDesc voxelNode = {};
+	//voxelNode.EmptyVertexCount = 64 * 64 * 64;
+	//voxelNode.MaterialAddr = (char*)(ttmaterial.get());
+	//nodeDesc.RenderingNodeDescVec.push_back(voxelNode);
+	//scene->AddUpdateMaterial("test3");
 	std::vector<RenderingPipelineNodeDesc> pipelineNodesVec;
 	pipelineNodesVec.push_back(nodeDesc);
 	auto vulkanPipeline = new VulkanRenderingPipeline();
@@ -66,8 +66,8 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 
 	while (true)
 	{
-		scene->UpdateSceneData();
 		int imageIndex = presentEngine->AcquireImage();
+		scene->UpdateSceneData(imageIndex);
 		auto semaphore = vulkanPipeline->SubmitRenderingCommands(imageIndex, graphicsQueue, presentEngine->GetCurrentFrameRenderFinishFence());
 		presentEngine->PresentFrame(imageIndex, semaphore);
 		if (window->MainLoop())

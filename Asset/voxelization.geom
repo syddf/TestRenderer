@@ -1,4 +1,4 @@
-#version 430
+#version 450
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(triangles) in;
@@ -7,18 +7,24 @@ layout(triangle_strip, max_vertices = 3) out;
 layout (location = 0) in vec3 inNormal[3];
 layout (location = 1) in vec2 inTexCoord[3];
 
-layout(set = 0, binding = 0) uniform Matrix
+layout(set = 2, binding = 4) uniform Matrix
 {
     mat4 DirectionViewProjection[3];
     mat4 DirectionInverseViewProjection[3];
 } matrices;
 
-layout(set = 0, binding = 1) uniform VoxelParams
+layout(set = 2, binding = 5) uniform VoxelParams
 {
     vec3 worldMinPoint;
     float voxelSize;
-    float volumeDimension;
+    float voxelDimension;
 } params;
+
+layout(set = 1, binding = 0) uniform MeshData
+{
+    mat4 modelTransform;
+    mat4 normalTransform;
+} md;
 
 layout(location = 0) out vec3 outWSPosition;
 layout(location = 1) out vec3 outPosition;
@@ -72,7 +78,7 @@ void main()
 	trianglePlane.xyz = cross(pos[1].xyz - pos[0].xyz, pos[2].xyz - pos[0].xyz);
 	trianglePlane.xyz = normalize(trianglePlane.xyz);
 	trianglePlane.w = -dot(pos[0].xyz, trianglePlane.xyz);
-	vec2 halfPixel = vec2(1.0f / params.volumeDimension);
+	vec2 halfPixel = vec2(1.0f / params.voxelDimension);
  	if(trianglePlane.z == 0.0f) return;
 	vec3 planes[3];
 	outTriangleAABB = AxisAlignedBoundingBox(pos, halfPixel);
@@ -102,13 +108,13 @@ void main()
 		vec4 voxelPos = inverseViewProj * pos[i];
 		voxelPos.xyz /= voxelPos.w;
 		voxelPos.xyz -= params.worldMinPoint;
-		voxelPos *= params.voxelSize;
+		voxelPos /= (params.voxelSize * params.voxelDimension);
 
 		gl_Position = pos[i];
 		outPosition = pos[i].xyz;
 		outNormal = inNormal[i];
 		outTexCoord = inTexCoord[i];
-		outWSPosition = voxelPos.xyz * params.volumeDimension;
+		outWSPosition = voxelPos.xyz * params.voxelDimension;
 
 		EmitVertex();
 	}

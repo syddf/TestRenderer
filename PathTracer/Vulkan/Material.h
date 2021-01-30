@@ -54,6 +54,7 @@ public:
 	void SetFloat(std::string paramName, float value);
 	void SetMatrix(std::string paramName, Matrix& matrix);
 	void SetImage(std::string paramName, std::string value);
+	bool HasImageParam(std::string paramName);
 	void BindImageAttachment(std::string paramName, std::string value);
 	void Update(int frameIndex);
 	void TranslateImageLayout(int frameIndex, VkCommandBuffer commandBuffer);
@@ -79,10 +80,14 @@ private:
 
 	VkDescriptorPoolSize mUniformBufferPoolSize;
 	VkDescriptorPoolSize mImageSamplerPoolSize;
+	VkDescriptorPoolSize mStorageImagePoolSize;
+
 	VkDescriptorPoolSize mPerObjectUniformBufferPoolSize;
 	VkDescriptorPoolSize mPerObjectImageSamplerPoolSize;
+
 	VkDescriptorPoolSize mPerCameraUniformBufferPoolSize;
 	VkDescriptorPoolSize mPerCameraImageSamplerPoolSize;
+	VkDescriptorPoolSize mPerCameraStorageImagePoolSize;
 
 	std::vector<VkDescriptorSetLayoutBinding> mPerObjectBindingVec;
 	std::vector<int> mPerObjectBindingSize;

@@ -17,6 +17,7 @@ struct ShaderParameter
 	int Offset;
 	std::string Name;
 	std::string Format;
+	bool Combined;
 
 	void Serialize(std::fstream& FileStream) const
 	{
@@ -24,6 +25,7 @@ struct ShaderParameter
 		SerializeHelper<int>()(FileStream, Offset);
 		SerializeHelper<std::string>()(FileStream, Name);
 		SerializeHelper<std::string>()(FileStream, Format);
+		SerializeHelper<bool>()(FileStream, Combined);
 	}
 
 	void Deserialize(std::fstream& FileStream)
@@ -32,6 +34,7 @@ struct ShaderParameter
 		DeserializeHelper<int>()(FileStream, Offset);
 		DeserializeHelper<std::string>()(FileStream, Name);
 		DeserializeHelper<std::string>()(FileStream, Format);
+		DeserializeHelper<bool>()(FileStream, Combined);
 	}
 };
 

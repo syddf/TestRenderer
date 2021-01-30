@@ -140,6 +140,8 @@ void VulkanMaterial::CreateVulkanDescLayout()
 	mUniformBufferPoolSize.descriptorCount = 0;
 	mImageSamplerPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	mImageSamplerPoolSize.descriptorCount = 0;
+	mStorageImagePoolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	mStorageImagePoolSize.descriptorCount = 0;
 
 	mPerObjectUniformBufferPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	mPerObjectUniformBufferPoolSize.descriptorCount = 0;
@@ -150,6 +152,8 @@ void VulkanMaterial::CreateVulkanDescLayout()
 	mPerCameraUniformBufferPoolSize.descriptorCount = 0;
 	mPerCameraImageSamplerPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	mPerCameraImageSamplerPoolSize.descriptorCount = 0;
+	mPerCameraStorageImagePoolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	mPerCameraStorageImagePoolSize.descriptorCount = 0;
 
 	std::map<int, std::vector<VkDescriptorSetLayoutBinding>> descSetLayoutMap;
 	std::map<int, std::vector<int>> descBindingSizeMap;
@@ -165,7 +169,7 @@ void VulkanMaterial::CreateVulkanDescLayout()
 			int binding = block.Binding;
 			int set = block.Set;
 			bool hasBinding = false;
-			for (auto bindingDesc : descSetLayoutMap[set])
+			for (auto& bindingDesc : descSetLayoutMap[set])
 			{
 				if (bindingDesc.binding == binding)
 				{
@@ -193,14 +197,26 @@ void VulkanMaterial::CreateVulkanDescLayout()
 				}
 				else
 				{
-					newBinding.descriptorCount = block.ParamsVec.size();
-					newBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-					mImageSamplerPoolSize.descriptorCount += newBinding.descriptorCount;
-					if (set == PerObjDescSetIndex)
-						mPerObjectImageSamplerPoolSize.descriptorCount++;
-					if (set == PerCameraDescSetIndex)
-						mPerCameraImageSamplerPoolSize.descriptorCount++;
+					if (block.ParamsVec[0].Combined)
+					{
+						newBinding.descriptorCount = block.ParamsVec.size();
+						newBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+						mImageSamplerPoolSize.descriptorCount += newBinding.descriptorCount;
+						if (set == PerObjDescSetIndex)
+							mPerObjectImageSamplerPoolSize.descriptorCount++;
+						if (set == PerCameraDescSetIndex)
+							mPerCameraImageSamplerPoolSize.descriptorCount++;
+					}
+					else
+					{
+						newBinding.descriptorCount = block.ParamsVec.size();
+						newBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+						if (set == PerCameraDescSetIndex)
+							mPerCameraStorageImagePoolSize.descriptorCount++;
+						mStorageImagePoolSize.descriptorCount++;
+					}
 				}
+
 				descSetLayoutMap[set].push_back(newBinding);
 				descBindingSizeMap[set].push_back(block.BlockSize);
 
@@ -240,11 +256,14 @@ void VulkanMaterial::CreateVulkanDescSet()
 {
 	mUniformBufferPoolSize.descriptorCount *= gSwapChainImageCount;
 	mImageSamplerPoolSize.descriptorCount *= gSwapChainImageCount;
+	mStorageImagePoolSize.descriptorCount *= gSwapChainImageCount;
 	std::vector<VkDescriptorPoolSize> descPoolSize;
 	if (mUniformBufferPoolSize.descriptorCount != 0)
 		descPoolSize.push_back(mUniformBufferPoolSize);
 	if (mImageSamplerPoolSize.descriptorCount != 0)
 		descPoolSize.push_back(mImageSamplerPoolSize);
+	if (mStorageImagePoolSize.descriptorCount != 0)
+		descPoolSize.push_back(mStorageImagePoolSize);
 
 	VkDescriptorPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -393,6 +412,10 @@ void VulkanMaterial::WriteDescSet(int frameIndex)
 
 	for (auto imageParam : mParams.ImageParams)
 	{
+		if (imageParam.second.Set == PerCameraDescSetIndex)
+		{
+			continue;
+		}
 		IImage::ImagePtr image;
 		if (imageParam.second.Attachment)
 		{
@@ -429,7 +452,7 @@ VkPipelineInputAssemblyStateCreateInfo VulkanMaterial::GetInputAssemblyStateCrea
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo = {};
 	inputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
-	inputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+	inputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	return inputAssemblyStateCreateInfo;
 }
 
@@ -536,6 +559,11 @@ void VulkanMaterial::SetImage(std::string paramName, std::string value)
 		mImageDirty[i] = true;
 }
 
+bool VulkanMaterial::HasImageParam(std::string paramName)
+{
+	return mParams.ImageParams.find(paramName) != mParams.ImageParams.end();
+}
+
 void VulkanMaterial::BindImageAttachment(std::string paramName, std::string value)
 {
 	assert(mParams.ImageParams.find(paramName) != mParams.ImageParams.end());
@@ -591,12 +619,18 @@ void VulkanMaterial::ExportOtherRateDescriptor(VkDescriptorSetLayout & setLayout
 	exportDescPoolBufferSize.descriptorCount *= gSwapChainImageCount;
 	VkDescriptorPoolSize exportDescPoolImageSize = descSetIndex == PerObjDescSetIndex ? mPerObjectImageSamplerPoolSize : mPerCameraImageSamplerPoolSize;
 	exportDescPoolImageSize.descriptorCount *= gSwapChainImageCount;
+	VkDescriptorPoolSize exportDescPoolStorageImageSize = {};
+	if(descSetIndex == PerCameraDescSetIndex)
+		exportDescPoolStorageImageSize = mPerCameraStorageImagePoolSize;
+	exportDescPoolStorageImageSize.descriptorCount *= gSwapChainImageCount;
 
 	std::vector<VkDescriptorPoolSize> descPoolSize;
 	if (exportDescPoolBufferSize.descriptorCount > 0)
 		descPoolSize.push_back(exportDescPoolBufferSize);
 	if (exportDescPoolImageSize.descriptorCount > 0)
 		descPoolSize.push_back(exportDescPoolImageSize);
+	if (exportDescPoolStorageImageSize.descriptorCount > 0)
+		descPoolSize.push_back(exportDescPoolStorageImageSize);
 
 	VkDescriptorPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

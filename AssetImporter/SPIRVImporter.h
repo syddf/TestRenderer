@@ -150,7 +150,7 @@ private:
 	void ExportStructShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string& namePrefix);
 	void ExportArrayShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string& namePrefix);
 	void ExportValueShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string& namePrefix);
-	void ExportImageShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string& namePrefix);
+	void ExportImageShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string& namePrefix, bool combined);
 
 	int ArrayPaddingSize(int srcSize)
 	{

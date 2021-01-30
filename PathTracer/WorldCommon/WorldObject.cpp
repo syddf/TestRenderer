@@ -22,6 +22,7 @@ WorldObject::WorldObject(std::string materialName, std::string modelName, std::s
 	mObjectName = objectName;
 	InitMaterialResource();
 	mDirty.resize(3, false);
+	mStatic = true;
 }
 
 WorldObject::~WorldObject()
@@ -68,6 +69,11 @@ void WorldObject::UpdateParams()
 		{
 			Matrix normal = glm::transpose(glm::inverse(trans));
 			mMaterialResource.Params.MatrixParams["normalTransform"].Value = normal;
+		}
+
+		if (mStatic)
+		{
+			mMaterialResource.Params.FloatParams["staticVoxelFlag"].Value = 1.0f;
 		}
 	}
 }

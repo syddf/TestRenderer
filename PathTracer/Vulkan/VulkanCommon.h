@@ -20,6 +20,8 @@ static VkFormat GetVKTextureFormat(TextureFormat format)
 	{
 		case TextureFormat::TF_R8SRGB:
 			return VkFormat::VK_FORMAT_R8_SRGB;
+		case TextureFormat::TF_R8Unorm:
+			return VkFormat::VK_FORMAT_R8_UNORM;
 		case TextureFormat::TF_R8G8B8A8UInt:
 			return VkFormat::VK_FORMAT_R8G8B8A8_UINT;
 		case TextureFormat::TF_R32G32B32A32SFloat:
@@ -120,6 +122,8 @@ static VkImageUsageFlagBits GetVKImageUsageFlagBits(TextureUsageBits usage)
 			return VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 		case TextureUsageBits::TU_TRANSFER_DST:
 			return VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		case TextureUsageBits::TU_STORAGE:
+			return VK_IMAGE_USAGE_STORAGE_BIT;
 	}
 	return VkImageUsageFlagBits::VK_IMAGE_USAGE_FLAG_BITS_MAX_ENUM;
 }
@@ -146,6 +150,10 @@ static VkImageUsageFlags GetVKImageUsageFlags(TextureUsage usage)
 	if (usage & TU_TRANSFER_DST)
 	{
 		res |= GetVKImageUsageFlagBits(TU_TRANSFER_DST);
+	}
+	if (usage & TU_STORAGE)
+	{
+		res |= GetVKImageUsageFlagBits(TU_STORAGE);
 	}
 	return res;
 }

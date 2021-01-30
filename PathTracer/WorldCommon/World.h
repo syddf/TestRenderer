@@ -42,7 +42,7 @@ public:
 	Light GetLight(int index);
 	Matrix GetViewMatrix();
 	Matrix GetProjMatrix();
-	void Update();
+	void Update(int frameIndex);
 	void AddMaterialParams(VulkanMaterial::MaterialPtr material);
 	VkDescriptorSet GetWorldParamsSet(VulkanMaterial* material, int frameIndex);
 

@@ -102,7 +102,7 @@ VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string material
 {
 	auto getShaderName = [](std::string file)->std::string
 	{
-		return file.substr(file.find_last_of('//') + 1);
+		return file.substr(file.find_last_of('\\') + 1);
 	};
 
 	if (materialMap.find(materialName) != materialMap.end())

@@ -6,6 +6,16 @@ extern UInt32 gScreenHeight;
 extern UInt32 gSwapChainImageCount;
 extern VkDevice gVulkanDevice;
 
+template<typename T>
+void UpdateConstantBufferParam(int frameIndex, int offset, IBuffer::BufferPtr buffer, T& value)
+{
+	char* data;
+	auto memory = std::dynamic_pointer_cast<VulkanBuffer>(buffer)->GetGPUBufferMemory();
+	vkMapMemory(gVulkanDevice, memory, offset, sizeof(T), 0, &((void*)data));
+	memcpy(data, &value, sizeof(T));
+	vkUnmapMemory(gVulkanDevice, memory);
+}
+
 World::World(const ImportSceneData& sceneData)
 	:mMainCamera(sceneData.CameraData)
 {
@@ -87,12 +97,81 @@ Matrix World::GetProjMatrix()
 	return proj;
 }
 
-void World::Update()
+void World::Update(int frameIndex)
 {
 	static float theta = 0.0f;
 	Vec3 point = Vec3(300.0f, 600.0f, 0.0f);
-	mMainCamera.SetParams(((float)gScreenWidth) / gScreenHeight, 0.1f, 10000.0f, glm::radians(60.0f), Vec3(sin(theta), 0.0f, cos(theta)), point, Vec3(0, -1, 0));
+	mMainCamera.SetParams(((float)gScreenWidth) / gScreenHeight, 0.1f, 10000.0f, glm::radians(60.0f), Vec3(0.0f, 0.0f, 1.0f), point, Vec3(0, -1, 0));
 	theta += 0.01f;
+
+	float voxelDimension = mWorldParams.VoxelDimension;
+	
+	Vec3 sceneSize = mMaxPoint - mMinPoint;
+	float maxLength = std::max(sceneSize.x, std::max(sceneSize.y, sceneSize.z));
+	float voxelSize = maxLength / voxelDimension;
+	float halfLength = 0.5f * maxLength;
+	Vec3 center = 0.5f * (mMinPoint + mMaxPoint);
+	Matrix projection = glm::ortho(-halfLength, halfLength, -halfLength, halfLength, 0.0f, maxLength);
+
+	Matrix orthViewProjMatrix[3];
+	Matrix orthViewProjInverseMatrix[3];
+	orthViewProjMatrix[0] = glm::lookAt(center + glm::vec3(halfLength, 0.0f, 0.0f), center, glm::vec3(0.0f, 1.0f, 0.0f));
+	orthViewProjMatrix[1] = glm::lookAt(center + glm::vec3(0.0f, halfLength, 0.0f), center, glm::vec3(0.0f, 0.0f, -1.0f));
+	orthViewProjMatrix[2] = glm::lookAt(center + glm::vec3(0.0f, 0.0f, halfLength), center, glm::vec3(0.0f, 1.0f, 0.0f));
+
+	for (int i = 0; i < 3; i++)
+	{
+		orthViewProjMatrix[i] = projection * orthViewProjMatrix[i];
+		orthViewProjInverseMatrix[i] = glm::inverse(orthViewProjMatrix[i]);
+	}
+
+	for (auto& materialParam : mWorldMaterialParams)
+	{
+		bool needUpdate = false;
+		auto SetParam = [&needUpdate](auto& param, std::string name, auto value)->void
+		{
+			if (param.first == name)
+			{
+				param.second.Value = value;
+				needUpdate = true;
+			}
+		};
+
+		auto& params = materialParam.second.Params;
+		for (auto& floatParam : params.FloatParams)
+		{
+			SetParam(floatParam, "voxelSize", voxelSize);
+			SetParam(floatParam, "voxelDimension", voxelDimension);
+		}
+
+		for (auto& float3Param : params.Vec3Params)
+		{
+			SetParam(float3Param, "worldMinPoint", mMinPoint);
+		}
+
+		for (auto& matParam : params.MatrixParams)
+		{
+			SetParam(matParam, "DirectionViewProjection[0]", orthViewProjMatrix[0]);
+			SetParam(matParam, "DirectionViewProjection[1]", orthViewProjMatrix[1]);
+			SetParam(matParam, "DirectionViewProjection[2]", orthViewProjMatrix[2]);
+			SetParam(matParam, "DirectionInverseViewProjection[0]", orthViewProjInverseMatrix[0]);
+			SetParam(matParam, "DirectionInverseViewProjection[1]", orthViewProjInverseMatrix[1]);
+			SetParam(matParam, "DirectionInverseViewProjection[2]", orthViewProjInverseMatrix[2]);
+		}
+
+		if (needUpdate)
+		{
+			for (auto param : materialParam.second.Params.Vec4Params)
+				UpdateConstantBufferParam(frameIndex, param.second.Offset, materialParam.second.CBuffer[frameIndex][param.second.Binding], param.second.Value);
+			for (auto param : materialParam.second.Params.Vec3Params)
+				UpdateConstantBufferParam(frameIndex, param.second.Offset, materialParam.second.CBuffer[frameIndex][param.second.Binding], param.second.Value);
+			for (auto param : materialParam.second.Params.FloatParams)
+				UpdateConstantBufferParam(frameIndex, param.second.Offset, materialParam.second.CBuffer[frameIndex][param.second.Binding], param.second.Value);
+			for (auto param : materialParam.second.Params.MatrixParams)
+				UpdateConstantBufferParam(frameIndex, param.second.Offset, materialParam.second.CBuffer[frameIndex][param.second.Binding], param.second.Value);
+		}
+	}
+
 }
 
 void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
@@ -124,7 +203,7 @@ void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 				desc.Format = ResourceCreator::GetInnerImageDataFormat(image.second.Format);
 				desc.GenerateMipMap = false;
 				desc.MipLevels = 1;
-				desc.Usage = TextureUsageBits::TU_SHADER_RESOURCE;
+				desc.Usage = TextureUsageBits::TU_STORAGE;
 				desc.Width = size;
 				desc.Height = size;
 				desc.Depth = size;
@@ -139,6 +218,8 @@ void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 
 		std::vector<VkWriteDescriptorSet> descriptorSetWrite;
 		std::vector<VkDescriptorImageInfo> descImageInfoVec;
+		descriptorSetWrite.reserve(gSwapChainImageCount * materialParams.Params.ImageParams.size());
+		descImageInfoVec.reserve(gSwapChainImageCount * materialParams.Params.ImageParams.size());
 
 		for (auto image : materialParams.Params.ImageParams)
 		{
@@ -148,7 +229,7 @@ void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 				{
 					auto pImage = materialParams.InnerImage[i][image.second.Binding];
 					VkDescriptorImageInfo imageInfo = {};
-					imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 					imageInfo.imageView = *((VkImageView*)pImage->GetGPUImageViewHandleAddress());
 					imageInfo.sampler = *((VkSampler*)pImage->GetSamplerHandleAddress());
 					descImageInfoVec.push_back(imageInfo);
@@ -158,7 +239,7 @@ void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 					descriptorWrite.dstSet = materialParams.DescSet[i];
 					descriptorWrite.dstBinding = image.second.Binding;
 					descriptorWrite.dstArrayElement = 0;
-					descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+					descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 					descriptorWrite.descriptorCount = 1;
 					descriptorWrite.pBufferInfo = nullptr;
 					descriptorWrite.pImageInfo = &descImageInfoVec.back();

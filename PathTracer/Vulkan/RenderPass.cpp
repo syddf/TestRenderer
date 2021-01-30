@@ -316,17 +316,17 @@ VkCommandBuffer VulkanRenderingNode::RecordCommandBuffer(int frameIndex, VkRende
 	}
 	else 
 	{
-		std::vector<VkDescriptorSet> submitDescSetVec = descSetVec;
 		for (auto objPtr : mObject)
 		{
+			std::vector<VkDescriptorSet> submitDescSetVec = descSetVec;
 			objPtr->Update(frameIndex);
 			VkDescriptorSet objSet = objPtr->GetDescSet(frameIndex);
 			if (objSet != VK_NULL_HANDLE)
-				descSetVec.push_back(objSet);
+				submitDescSetVec.push_back(objSet);
 			VkDescriptorSet worldSet = mWorld->GetWorldParamsSet(mat, frameIndex);
 			if (worldSet != VK_NULL_HANDLE)
-				descSetVec.push_back(worldSet);
-			vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, descSetVec.size(), descSetVec.data(), 0, nullptr);
+				submitDescSetVec.push_back(worldSet);
+			vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, submitDescSetVec.size(), submitDescSetVec.data(), 0, nullptr);
 			IMesh::MeshPtr mesh = objPtr->GetMeshPtr();
 			int vertCount = mesh->GetVertexCount();
 			int indCount = mesh->GetIndexCount();

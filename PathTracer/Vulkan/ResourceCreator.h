@@ -46,7 +46,7 @@ public:
 		if (format == "R32ui")
 			return TextureFormat::TF_R32UInt;
 		else if (format == "R8")
-			return TextureFormat::TF_R8SRGB;
+			return TextureFormat::TF_R8Unorm;
 		return TextureFormat::TF_UNDEFINED;
 	}
 	static void DestroyCachingResource();

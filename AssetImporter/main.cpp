@@ -4,9 +4,9 @@
 
 int main(int argc, char** argv)
 {
-	/*
-	std::string tpath1 = "C:\\Users\\syddfyuan\\Downloads\\VCTRenderer-master\\VCTRenderer-master\\engine\\assets\\models\\crytek-sponza\\sponza.obj";
-	std::string tpath2 = "C:\\Users\\syddfyuan\\Downloads\\VCTRenderer-master\\VCTRenderer-master\\engine\\assets\\models\\crytek-sponza\\res\\sponza.data";
+/*
+	std::string tpath1 = "D:\\Resource\\sponza.obj";
+	std::string tpath2 = "D:\\Resource\\res\\sponza.data";
 	AssetImporter imp;
 	imp.ImportAsset(tpath1, tpath2);
 	char buffer[256];

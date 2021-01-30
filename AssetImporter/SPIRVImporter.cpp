@@ -396,13 +396,13 @@ void SPIRVImporter::ExportAllBlock(ImportAsset* ImportAsset)
 			newBlockInfo.StructBuffer = false;
 			int imageTypeId = mSPIRVGlobalState.OpType[typeId].parentType;
 			std::string blockName = mSPIRVGlobalState.OpNames[blockId].name;
-			ExportImageShaderParameters(imageTypeId, 0, newBlockInfo.ParamsVec, blockName);
+			ExportImageShaderParameters(imageTypeId, 0, newBlockInfo.ParamsVec, blockName, true);
 		}
 		else if (mSPIRVGlobalState.OpType[typeId].typeEnum == SPIRV_TypeEnum::TE_Image)
 		{
 			newBlockInfo.StructBuffer = false;
 			std::string blockName = mSPIRVGlobalState.OpNames[blockId].name;
-			ExportImageShaderParameters(typeId, 0, newBlockInfo.ParamsVec, blockName);
+			ExportImageShaderParameters(typeId, 0, newBlockInfo.ParamsVec, blockName, false);
 		}
 		else if (mSPIRVGlobalState.OpType[typeId].typeEnum == SPIRV_TypeEnum::TE_Array)
 		{
@@ -502,7 +502,17 @@ void SPIRVImporter::ExportArrayShaderParameters(int structId, int offset, std::v
 			std::string arraySuffix = std::string("[") + std::to_string(i) + std::string("]");
 			std::string name = namePrefix + arraySuffix;
 			int imageTypeId = mSPIRVGlobalState.OpType[parentId].parentType;
-			ExportImageShaderParameters(imageTypeId, baseOffset, paramsVec, name);
+			ExportImageShaderParameters(imageTypeId, baseOffset, paramsVec, name, true);
+		}
+	}
+	else if (parentType.typeEnum == SPIRV_TypeEnum::TE_Image)
+	{
+		for (int i = 0; i < mSPIRVGlobalState.OpType[structId].width; i++)
+		{
+			std::string arraySuffix = std::string("[") + std::to_string(i) + std::string("]");
+			std::string name = namePrefix + arraySuffix;
+			int imageTypeId = mSPIRVGlobalState.OpType[parentId].parentType;
+			ExportImageShaderParameters(imageTypeId, baseOffset, paramsVec, name, false);
 		}
 	}
 	else 
@@ -528,7 +538,7 @@ void SPIRVImporter::ExportValueShaderParameters(int structId, int offset, std::v
 	paramsVec.push_back(shaderParameter);
 }
 
-void SPIRVImporter::ExportImageShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string & namePrefix)
+void SPIRVImporter::ExportImageShaderParameters(int structId, int offset, std::vector<ShaderParameter>& paramsVec, const std::string & namePrefix, bool combined)
 {
 	static std::map<int, std::string> imageFormatMap = 
 	{
@@ -540,5 +550,6 @@ void SPIRVImporter::ExportImageShaderParameters(int structId, int offset, std::v
 	ShaderParameter newParameter;
 	newParameter.Format = "Texture+" + sDimensionNameMap[imageType.dimension] + "+" + imageFormatMap[imageType.parentType];
 	newParameter.Name = namePrefix;
+	newParameter.Combined = combined;
 	paramsVec.push_back(newParameter);
 }

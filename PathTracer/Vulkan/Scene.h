@@ -18,7 +18,7 @@ public:
 	std::string GetSceneMeshName(int index, std::string prefix);
 	std::string GetSceneObjectName(int index, std::string prefix);
 	void AddUpdateMaterial(std::string materialName);
-	void UpdateSceneData();
+	void UpdateSceneData(int frameIndex);
 
 private:
 	void InitializeSceneData();
