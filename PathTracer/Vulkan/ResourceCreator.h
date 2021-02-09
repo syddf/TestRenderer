@@ -18,9 +18,10 @@ public:
 	static IBuffer::BufferPtr CreateStagingBuffer(char* bufferData, UInt32 bufferSize);
 	static IBuffer::BufferPtr CreateUniformBuffer(UInt32 bufferSize);
 	static IImage::ImagePtr CreateImageFromFile(std::string imageFile);
+	static IImage::ImagePtr CreateInnerImage(ImageDesc imageDesc, std::string imageName);
 	static IBuffer::BufferPtr CreateVertexBuffer(char* bufferData, UInt32 bufferSize);
 	static IBuffer::BufferPtr CreateIndexBuffer(char* bufferData, UInt32 bufferSize);
-	static VulkanMaterial::MaterialPtr CreateMaterial(std::string materialName, std::string vertexShader = "", std::string fragmentShader = "", std::string geometryShader = "");
+	static VulkanMaterial::MaterialPtr CreateMaterial(std::string materialName, MaterialMode mode, std::string vertexShader = "", std::string fragmentShader = "", std::string geometryShader = "");
 	static IMesh::MeshPtr CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex, std::string modelName);
 	static IMesh::MeshPtr GetExportedMesh(std::string meshName);
 	static VulkanAttachment::AttachmentPtr CreateDepthStencilAttachment(std::string name, int width, int height);

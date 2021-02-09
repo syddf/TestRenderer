@@ -60,12 +60,13 @@ public:
 
 public:
 	void GenerateGraphicsNode(const RenderingPipelineNodeDesc& desc);
-	VkSemaphore GetSignalSemaphore(int frameIndex) const { return mSignalSemaphore[frameIndex]; }
+	VkSemaphore& GetSignalSemaphore(int frameIndex) { return mSignalSemaphore[frameIndex]; }
 	std::vector<VkSemaphore>& GetWaitSemaphore(int frameIndex) { return mWaitSemaphore[frameIndex]; }
+	std::vector<VkPipelineStageFlags>& GetWaitFlags() { mWaitFlags.resize(mWaitSemaphore[0].size(), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT); return mWaitFlags; }
 	void AddWaitSemaphore(VkSemaphore waitSemaphore, int frameIndex) { assert(waitSemaphore != VK_NULL_HANDLE); mWaitSemaphore[frameIndex].push_back(waitSemaphore); };
 	void CreateSignalSemaphore();
 	void AddRenderingNodes(RenderingNodeDesc desc);
-	VkCommandBuffer RecordCommandBuffer(int frameIndex);
+	VkCommandBuffer& RecordCommandBuffer(int frameIndex);
 
 private:
 	VkRenderPass mVKRenderPass;
@@ -75,6 +76,7 @@ private:
 	std::vector<VkCommandBuffer> mCommandBuffer;
 	std::vector<RenderingNodePtr> mRenderingNodes;
 	std::vector<std::vector<VkSemaphore>> mWaitSemaphore;
+	std::vector<VkPipelineStageFlags> mWaitFlags;
 	std::vector<VkClearValue> mClearValue;
 	int mColorAttachmentCount;
 };

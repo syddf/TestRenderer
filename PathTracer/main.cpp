@@ -28,39 +28,52 @@ VulkanPresentEngine* presentEngine;
 void test(VkQueue graphicsQueue, VulkanWindow* window)
 {
 	//auto ttmaterial = ResourceCreator::CreateMaterial("test3", "D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data");
-	//auto tmaterial = ResourceCreator::CreateMaterial("test2", "D:\\OfflineRenderer\\Asset\\renderVoxelVert.data", "D:\\OfflineRenderer\\Asset\\renderVoxelFrag.data", "D:\\OfflineRenderer\\Asset\\renderVoxelGeom.data");
+	auto tmaterial = ResourceCreator::CreateMaterial("test2", MaterialMode::Normal, "D:\\OfflineRenderer\\Asset\\renderVoxelVert.data", "D:\\OfflineRenderer\\Asset\\renderVoxelFrag.data", "D:\\OfflineRenderer\\Asset\\renderVoxelGeom.data");
 	//auto material = ResourceCreator::CreateMaterial("test1", "D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data");
 	
 	VulkanSceneData * scene = new VulkanSceneData("D:\\Resource\\res\\sponza.data");
 	ResourceCreator::CreateDepthStencilAttachment("DepthStencilAttachment", gScreenWidth, gScreenHeight);
-	RenderingPipelineNodeDesc nodeDesc = {};
-	nodeDesc.NodeName = "testNode";
-	nodeDesc.BindPoint = PipelineBindPoint::BP_GRAPHICS;
-	nodeDesc.AttachToWindowNode = true;
-	nodeDesc.FrameBufferDesc.Width = gScreenWidth;
-	nodeDesc.FrameBufferDesc.Height = gScreenHeight;
-	nodeDesc.FrameBufferDesc.AttachmentName.push_back("SwapChainImage");
-	nodeDesc.FrameBufferDesc.AttachmentName.push_back("DepthStencilAttachment");
+
+	RenderingPipelineNodeDesc voxelizationPass = {};
+	voxelizationPass.NodeName = "voxelization";
+	voxelizationPass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
+	voxelizationPass.AttachToWindowNode = false;
+	voxelizationPass.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data", "Sponza", MaterialMode::NoAttachment);
+	
+	RenderingPipelineNodeDesc renderVoxelPass = {};
+	renderVoxelPass.NodeName = "renderVoxel";
+	renderVoxelPass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
+	renderVoxelPass.AttachToWindowNode = true;
+	renderVoxelPass.FrameBufferDesc.Width = gScreenWidth;
+	renderVoxelPass.FrameBufferDesc.Height = gScreenHeight;
+	renderVoxelPass.FrameBufferDesc.AttachmentName.push_back("SwapChainImage");
+	renderVoxelPass.FrameBufferDesc.AttachmentName.push_back("DepthStencilAttachment");
 
 	AttachmentDesc attachDesc;
 	attachDesc.Usage = TextureUsageBits::TU_COLOR_ATTACHMENT;
 	attachDesc.LoadOp = AttachmentOperator::AO_CLEAR;
 	attachDesc.StoreOp = AttachmentOperator::AO_STORE;
 	attachDesc.Format = TextureFormat::TF_B8G8R8A8SRGB;
-	nodeDesc.FrameBufferLayoutDesc.AttachmentDesc.push_back(attachDesc);
+	renderVoxelPass.FrameBufferLayoutDesc.AttachmentDesc.push_back(attachDesc);
 
 	attachDesc.Usage = TextureUsageBits::TU_DEPTH_STENCIL;
 	attachDesc.Format = TextureFormat::TF_D24US8;
-	nodeDesc.FrameBufferLayoutDesc.AttachmentDesc.push_back(attachDesc);
+	renderVoxelPass.FrameBufferLayoutDesc.AttachmentDesc.push_back(attachDesc);
 
-	nodeDesc.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data", "Sponza");
-	//RenderingNodeDesc voxelNode = {};
-	//voxelNode.EmptyVertexCount = 64 * 64 * 64;
-	//voxelNode.MaterialAddr = (char*)(ttmaterial.get());
-	//nodeDesc.RenderingNodeDescVec.push_back(voxelNode);
-	//scene->AddUpdateMaterial("test3");
+	RenderingNodeDesc voxelNode = {};
+	voxelNode.EmptyVertexCount = 256 * 256 * 256;
+	voxelNode.MaterialAddr = (char*)(tmaterial.get());
+	voxelNode.World = scene->GetWorldData().get();
+	renderVoxelPass.RenderingNodeDescVec.push_back(voxelNode);
+	scene->AddUpdateMaterial("test2");
+
+	renderVoxelPass.DependingNodeIndex.push_back(0);
+	
+
 	std::vector<RenderingPipelineNodeDesc> pipelineNodesVec;
-	pipelineNodesVec.push_back(nodeDesc);
+	pipelineNodesVec.push_back(voxelizationPass);
+	pipelineNodesVec.push_back(renderVoxelPass);
+
 	auto vulkanPipeline = new VulkanRenderingPipeline();
 	vulkanPipeline->GenerateRenderingGraph(pipelineNodesVec);
 
@@ -86,7 +99,10 @@ void compileShader()
 	{
 		"voxelization.vert",
 		"voxelization.frag",
-		"voxelization.geom"
+		"voxelization.geom",
+		"renderVoxel.vert",
+		"renderVoxel.frag",
+		"renderVoxel.geom"
 	};
 	std::vector<std::string> newShaderPathVec;
 	char buffer[MAXPATH];

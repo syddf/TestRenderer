@@ -1,4 +1,7 @@
 D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\voxelization.vert -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\voxelizationVert.spv
 D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\voxelization.frag -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\voxelizationFrag.spv
 D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\voxelization.geom -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\voxelizationGeom.spv
+D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxel.vert -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxelVert.spv
+D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxel.frag -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxelFrag.spv
+D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxel.geom -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxelGeom.spv
 pause

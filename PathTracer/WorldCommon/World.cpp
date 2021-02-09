@@ -39,7 +39,7 @@ World::World(const ImportSceneData& sceneData)
 		mMaxPoint = glm::max(sceneData.MeshData.MaxPointVec[i], mMaxPoint);
 	}
 
-	mWorldParams.VoxelDimension = 64;
+	mWorldParams.VoxelDimension = 256;
 }
 
 World::~World()
@@ -68,14 +68,13 @@ void World::AddDefaultDirectionalLight(int index)
 
 void World::GetVoxelizationParams(int& dimension, Matrix & viewProj, float& voxelSize, Vec3 & worldMinPoint)
 {
-	dimension = 64;
+	dimension = 256;
 	Matrix view = GetViewMatrix();
 	Matrix proj = GetProjMatrix();
 	viewProj = proj * view;
 	
 	voxelSize = (mMaxPoint - mMinPoint)[0] / dimension;
 	worldMinPoint = mMinPoint;
-	worldMinPoint = Vec3(300.0f, 600.0f, 100.0f);
 }
 
 Light World::GetLight(int index)
@@ -100,8 +99,8 @@ Matrix World::GetProjMatrix()
 void World::Update(int frameIndex)
 {
 	static float theta = 0.0f;
-	Vec3 point = Vec3(300.0f, 600.0f, 0.0f);
-	mMainCamera.SetParams(((float)gScreenWidth) / gScreenHeight, 0.1f, 10000.0f, glm::radians(60.0f), Vec3(0.0f, 0.0f, 1.0f), point, Vec3(0, -1, 0));
+	Vec3 point = Vec3(300.0f, 200.0f, 0.0f);
+	mMainCamera.SetParams(((float)gScreenWidth) / gScreenHeight, 0.1f, 10000.0f, glm::radians(60.0f), Vec3(cos(theta), 0.0f, sin(theta)), point, Vec3(0, -1, 0));
 	theta += 0.01f;
 
 	float voxelDimension = mWorldParams.VoxelDimension;
@@ -111,13 +110,15 @@ void World::Update(int frameIndex)
 	float voxelSize = maxLength / voxelDimension;
 	float halfLength = 0.5f * maxLength;
 	Vec3 center = 0.5f * (mMinPoint + mMaxPoint);
-	Matrix projection = glm::ortho(-halfLength, halfLength, -halfLength, halfLength, 0.0f, maxLength);
+	Matrix projection = glm::ortho(-halfLength, halfLength, -halfLength, halfLength, -maxLength, maxLength);
 
 	Matrix orthViewProjMatrix[3];
 	Matrix orthViewProjInverseMatrix[3];
 	orthViewProjMatrix[0] = glm::lookAt(center + glm::vec3(halfLength, 0.0f, 0.0f), center, glm::vec3(0.0f, 1.0f, 0.0f));
 	orthViewProjMatrix[1] = glm::lookAt(center + glm::vec3(0.0f, halfLength, 0.0f), center, glm::vec3(0.0f, 0.0f, -1.0f));
 	orthViewProjMatrix[2] = glm::lookAt(center + glm::vec3(0.0f, 0.0f, halfLength), center, glm::vec3(0.0f, 1.0f, 0.0f));
+	Matrix view, proj;
+	mMainCamera.GetViewTransformMatrix(view, proj);
 
 	for (int i = 0; i < 3; i++)
 	{
@@ -157,6 +158,8 @@ void World::Update(int frameIndex)
 			SetParam(matParam, "DirectionInverseViewProjection[0]", orthViewProjInverseMatrix[0]);
 			SetParam(matParam, "DirectionInverseViewProjection[1]", orthViewProjInverseMatrix[1]);
 			SetParam(matParam, "DirectionInverseViewProjection[2]", orthViewProjInverseMatrix[2]);
+			SetParam(matParam, "view", view);
+			SetParam(matParam, "proj", proj);
 		}
 
 		if (needUpdate)
@@ -211,7 +214,7 @@ void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 
 				for (int i = 0; i < gSwapChainImageCount; i++)
 				{
-					materialParams.InnerImage[i][image.second.Binding] = std::make_shared<VulkanImage>(desc);
+					materialParams.InnerImage[i][image.second.Binding] = ResourceCreator::CreateInnerImage(desc, image.first);
 				}
 			}
 		}

@@ -8,7 +8,14 @@ enum ShaderTypeEnum
 {
 	ImportVertexShader,
 	ImportFragmentShader,
-	ImportComputeShader
+	ImportComputeShader,
+	ImportGeometryShader
+};
+
+enum GeometryPrimitiveInput
+{
+	PI_POINTS,
+	PI_TRIANGLE
 };
 
 struct ShaderParameter
@@ -130,10 +137,12 @@ struct ImportSPIRVShaderData : public ImportAsset
 	};
 
 	ShaderTypeEnum ShaderType;
+	GeometryPrimitiveInput PrimitiveInput;
 	std::vector<char> ShaderData;
 	std::vector<ShaderBlockInfo> ShaderParamsBlockInfo;
 	std::vector<ShaderInputInfo> ShaderInputInfo;
 	std::vector<ShaderPushConstantInfo> ShaderPushConstantInfo;
+
 
 	void Serialize(const std::string& TarFileName)
 	{
@@ -141,6 +150,7 @@ struct ImportSPIRVShaderData : public ImportAsset
 		File.Write(AssetTypeEnum);
 		File.Write(AssetVersion);
 		File.Write(ShaderType);
+		File.Write(PrimitiveInput);
 		File.Write(ShaderData);
 		File.Write(ShaderParamsBlockInfo);
 		File.Write(ShaderInputInfo);
@@ -153,6 +163,7 @@ struct ImportSPIRVShaderData : public ImportAsset
 		File.Read(AssetTypeEnum);
 		File.Read(AssetVersion);
 		File.Read(ShaderType);
+		File.Read(PrimitiveInput);
 		File.Read(ShaderData);
 		File.Read(ShaderParamsBlockInfo);
 		File.Read(ShaderInputInfo);

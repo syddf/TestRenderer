@@ -44,10 +44,14 @@ public:
 	VulkanShaderParams GetShaderParams() { return mVulkanShaderParams;  };
 	char* GetGPUShaderHandleAddress() { return reinterpret_cast<char*>(&mShaderModule); };
 	VulkanShaderType GetShaderType() const { return mShaderType; }
+	GeometryPrimitiveInput GetPrimitiveInput() const { return mPrimitive; }
 	VkVertexInputBindingDescription GetInputBindingDescription(std::vector<VkVertexInputAttributeDescription>& attributeDescVec);
+	
+	void SetPrimitive(GeometryPrimitiveInput primitiveInput) { mPrimitive = primitiveInput;  }
 
 private:
 	VulkanShaderType mShaderType;
+	GeometryPrimitiveInput mPrimitive;
 	VkShaderModule mShaderModule;
 	VulkanShaderParams mVulkanShaderParams;
 };

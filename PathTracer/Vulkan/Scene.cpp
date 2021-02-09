@@ -10,7 +10,7 @@ VulkanSceneData::~VulkanSceneData()
 {
 }
 
-std::vector<RenderingNodeDesc> VulkanSceneData::ExportAllRenderingNodeByMaterial(std::string vertexShaderFile, std::string fragShaderFile, std::string geometryShaderFile, std::string scenePrefix)
+std::vector<RenderingNodeDesc> VulkanSceneData::ExportAllRenderingNodeByMaterial(std::string vertexShaderFile, std::string fragShaderFile, std::string geometryShaderFile, std::string scenePrefix, MaterialMode materialMode)
 {
 	std::vector<RenderingNodeDesc> renderingNodeVec;
 	auto meshData = ResourceCreator::GetAsset<ImportSceneData>(mSceneFile);
@@ -24,7 +24,7 @@ std::vector<RenderingNodeDesc> VulkanSceneData::ExportAllRenderingNodeByMaterial
 	for (auto material : materialVec)
 	{
 		std::string materialName = this->GetSceneMaterialName(matIndex, scenePrefix);
-		auto mat = ResourceCreator::CreateMaterial(materialName, vertexShaderFile, fragShaderFile, geometryShaderFile);
+		auto mat = ResourceCreator::CreateMaterial(materialName, materialMode, vertexShaderFile, fragShaderFile, geometryShaderFile);
 		mWorldData->AddMaterialParams(mat);
 		if (material.TexturePath[TextureType::Diffuse] != "")
 			if(mat->HasImageParam("tDiffuse"))
@@ -93,8 +93,9 @@ std::string VulkanSceneData::GetSceneObjectName(int index, std::string prefix)
 
 void VulkanSceneData::AddUpdateMaterial(std::string materialName)
 {
-	auto material = ResourceCreator::CreateMaterial(materialName);
+	auto material = ResourceCreator::CreateMaterial(materialName, MaterialMode::Normal);
 	mUpdateSceneDataMaterialVec.push_back(material);
+	mWorldData->AddMaterialParams(material);
 }
 
 void VulkanSceneData::UpdateSceneData(int frameIndex)

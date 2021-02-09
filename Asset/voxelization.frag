@@ -3,8 +3,8 @@
 layout(location = 0) in vec3 inWSPosition;
 layout(location = 1) in vec3 inPosition;
 layout(location = 2) in vec3 inNormal;
-layout(location = 3) in vec4 inTriangleAABB;
-layout(location = 4) in vec2 inTexCoord;
+layout(location = 3) in vec3 inTexCoord;
+layout(location = 4) in vec4 inTriangleAABB;
 
 layout(set = 0, binding = 0) uniform sampler2D tDiffuse;
 layout(set = 0, binding = 1) uniform sampler2D opacityMap;
@@ -19,8 +19,6 @@ layout(set = 2, binding = 0, r32ui) uniform uimage3D voxelAlbedo_IN;
 layout(set = 2, binding = 1, r32ui) uniform uimage3D voxelNormal_IN;
 layout(set = 2, binding = 2, r32ui) uniform uimage3D voxelEmission_IN;
 layout(set = 2, binding = 3, r8) uniform image3D staticVoxelFlag_IN;
-
-layout(location = 0) out vec4 fragColor;
 
 vec4 convRGBA8ToVec4(uint val)
 {
@@ -119,11 +117,11 @@ vec3 DecodeNormal(vec3 normal)
 
 void main()
 {
-  	if( inPosition.x < inTriangleAABB.x || inPosition.y < inTriangleAABB.y || inPosition.x > inTriangleAABB.z || inPosition.y > inTriangleAABB.w )
+    	if( inPosition.x < inTriangleAABB.x || inPosition.y < inTriangleAABB.y || 
+		inPosition.x > inTriangleAABB.z || inPosition.y > inTriangleAABB.w )
 	{
 		discard;
 	}
-
 	ivec3 position = ivec3(inWSPosition);
 	vec4 albedo = texture(tDiffuse, inTexCoord.xy);
 	float opacity = albedo.a;
@@ -137,9 +135,7 @@ void main()
     	}
  	if(opacity > 0.0f)
 	{
-		albedo.rgb = albedo.rgb;
-        		albedo.rgb *= opacity;
-        		albedo.a = 1.0f;
+		albedo.a = 1.0f;
         		vec4 emissive = texture(emissiveMap, inTexCoord.xy);
        		emissive.a = 1.0f;
         		vec4 normal = vec4(EncodeNormal(normalize(inNormal)), 1.0f);

@@ -178,5 +178,6 @@ struct MaterialParams
 
 enum MaterialMode
 {
-	Normal
+	Normal,
+	NoAttachment
 };

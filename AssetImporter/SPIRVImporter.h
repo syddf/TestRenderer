@@ -40,6 +40,7 @@ struct SPIRV_OpTypePointer
 struct SPIRV_EntryPoint
 {
 	ShaderTypeEnum shaderType;
+	GeometryPrimitiveInput primitiveInput = GeometryPrimitiveInput::PI_TRIANGLE;
 	int entryPointId;
 	std::string name;
 	std::vector<int> opId;
@@ -140,6 +141,7 @@ private:
 	void ProcessOpVariable(const std::vector<SPIRVWord>& operands);
 	void ProcessOpType(short op, const std::vector<SPIRVWord>& operands);
 	void ProcessOpMemberDecorate(const std::vector<SPIRVWord>& operands);
+	void ProcessOpExecutionMode(const std::vector<SPIRVWord>& operands);
 	std::string LoadString(const std::vector<SPIRVWord>& operands, int& index);
 	int GetMemberOffset(int structId, int member);
 	std::string GetMemberName(int structId, int member);

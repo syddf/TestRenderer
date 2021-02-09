@@ -17,10 +17,11 @@ void UpdateConstantBufferParam(int frameIndex, int offset, IBuffer::BufferPtr bu
 }
 
 
-VulkanMaterial::VulkanMaterial(VulkanMaterialShader materialShader, std::string shaderGroupName)
+VulkanMaterial::VulkanMaterial(VulkanMaterialShader materialShader, std::string shaderGroupName, MaterialMode materialMode)
 {
 	mShader = materialShader;
 	mShaderGroupName = shaderGroupName;
+	mMaterialMode = materialMode;
 
 	CreateVulkanDescLayout();
 	CreateVulkanDescSet();
@@ -29,7 +30,6 @@ VulkanMaterial::VulkanMaterial(VulkanMaterialShader materialShader, std::string 
 	MergeShaderParams();
 	WriteDescSet();
 
-	mMaterialMode = MaterialMode::Normal;
 	mConstantBufferDirty.resize(gSwapChainImageCount, false);
 	mImageDirty.resize(gSwapChainImageCount, false);
 }
@@ -453,6 +453,14 @@ VkPipelineInputAssemblyStateCreateInfo VulkanMaterial::GetInputAssemblyStateCrea
 	inputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
 	inputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	if (mShader.GeometryShader)
+	{
+		auto primitive = std::static_pointer_cast<VulkanShader>(mShader.GeometryShader)->GetPrimitiveInput();
+		if (primitive == GeometryPrimitiveInput::PI_POINTS)
+		{
+			inputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+		}
+	}
 	return inputAssemblyStateCreateInfo;
 }
 
@@ -460,11 +468,19 @@ VkPipelineDepthStencilStateCreateInfo VulkanMaterial::GetDepthStencilStateCreate
 {
 	VkPipelineDepthStencilStateCreateInfo depthStencilStateInfo = {};
 	depthStencilStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencilStateInfo.depthWriteEnable = VK_TRUE;
-	depthStencilStateInfo.depthTestEnable = VK_TRUE;
-	depthStencilStateInfo.depthCompareOp = VK_COMPARE_OP_LESS;
 	depthStencilStateInfo.depthBoundsTestEnable = VK_FALSE;
 	depthStencilStateInfo.stencilTestEnable = VK_FALSE;
+	if (mMaterialMode == MaterialMode::NoAttachment)
+	{
+		depthStencilStateInfo.depthWriteEnable = VK_FALSE;
+		depthStencilStateInfo.depthTestEnable = VK_FALSE;
+	}
+	else
+	{
+		depthStencilStateInfo.depthWriteEnable = VK_TRUE;
+		depthStencilStateInfo.depthTestEnable = VK_TRUE;
+		depthStencilStateInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+	}
 	return depthStencilStateInfo;
 }
 
@@ -505,13 +521,13 @@ VkPipelineRasterizationStateCreateInfo VulkanMaterial::GetRasterizationStateCrea
 	return createInfo;
 }
 
-std::vector<VkDescriptorSet> VulkanMaterial::GetDescriptorSet(int frameIndex, int & descCount)
+std::vector<VkDescriptorSet> VulkanMaterial::GetDescriptorSet(int frameIndex, int & descCount, bool addObjectSet)
 {
 	std::vector<VkDescriptorSet> descSetVec;
 	descCount = mVKDescSetLayoutVec.size();
 	for (int i = 0; i < descCount; i++)
 	{
-		if (i == PerObjDescSetIndex || i == PerCameraDescSetIndex)
+		if ((i == PerObjDescSetIndex && !addObjectSet) || i == PerCameraDescSetIndex)
 			continue;
 		descSetVec.push_back(mVKDescSetVec[frameIndex * descCount + i]);
 	}

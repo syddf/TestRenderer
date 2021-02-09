@@ -12,7 +12,7 @@ struct VulkanMaterialShader
 class VulkanMaterial
 {
 public:
-	VulkanMaterial(VulkanMaterialShader materialShader, std::string shaderGroupName);
+	VulkanMaterial(VulkanMaterialShader materialShader, std::string shaderGroupName, MaterialMode materialMode);
 	~VulkanMaterial();
 	using MaterialPtr = std::shared_ptr<VulkanMaterial>;
 
@@ -45,7 +45,7 @@ public:
 	VkPipelineDepthStencilStateCreateInfo GetDepthStencilStateCreateInfo();
 	VkPipelineVertexInputStateCreateInfo GetVertexInputStateCreateInfo(std::vector<VkVertexInputAttributeDescription>& attributeDescVec, VkVertexInputBindingDescription& bindingDesc);
 	VkPipelineRasterizationStateCreateInfo GetRasterizationStateCreateInfo();
-	std::vector<VkDescriptorSet> GetDescriptorSet(int frameIndex, int& descCount);
+	std::vector<VkDescriptorSet> GetDescriptorSet(int frameIndex, int& descCount, bool addObjectSet = false);
 
 public:
 	std::string GetShaderGroupName() const { return mShaderGroupName; }

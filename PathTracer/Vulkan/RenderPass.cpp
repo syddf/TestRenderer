@@ -137,6 +137,7 @@ void VulkanPipelineNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc & 
 		auto attach = attachmentMap[desc.FrameBufferDesc.AttachmentName[i]];
 		mAttachment.push_back(attach);
 	}
+
 	for (int frameIndex = 0; frameIndex < gSwapChainImageCount; frameIndex++)
 	{
 		std::vector<VkImageView> attachmentView;
@@ -148,8 +149,17 @@ void VulkanPipelineNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc & 
 		}
 		VkFramebufferCreateInfo frameBufferInfo = {};
 		frameBufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		frameBufferInfo.width = desc.FrameBufferDesc.Width;
-		frameBufferInfo.height = desc.FrameBufferDesc.Height;
+
+		if (desc.FrameBufferDesc.AttachmentName.empty())
+		{
+			frameBufferInfo.width = gScreenWidth;
+			frameBufferInfo.height = gScreenHeight;
+		}
+		else
+		{
+			frameBufferInfo.width = desc.FrameBufferDesc.Width;
+			frameBufferInfo.height = desc.FrameBufferDesc.Height;
+		}
 		frameBufferInfo.pAttachments = attachmentView.data();
 		frameBufferInfo.attachmentCount = attachmentView.size();
 		frameBufferInfo.layers = 1;
@@ -192,9 +202,15 @@ void VulkanPipelineNode::AddRenderingNodes(RenderingNodeDesc desc)
 		colorBlendStateInfo.blendConstants[3] = 0.0f;
 		mRenderingNodes.push_back(std::make_shared<VulkanRenderingNode>(desc, mVKRenderPass, colorBlendStateInfo));
 	}
+	else if (matMode == MaterialMode::NoAttachment)
+	{
+		VkPipelineColorBlendStateCreateInfo colorBlendStateInfo = {};
+		colorBlendStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		mRenderingNodes.push_back(std::make_shared<VulkanRenderingNode>(desc, mVKRenderPass, colorBlendStateInfo));
+	}
 }
 
-VkCommandBuffer VulkanPipelineNode::RecordCommandBuffer(int frameIndex)
+VkCommandBuffer& VulkanPipelineNode::RecordCommandBuffer(int frameIndex)
 {
 	VkRenderPassBeginInfo renderPassBeginInfo = {};
 	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -307,11 +323,15 @@ VkCommandBuffer VulkanRenderingNode::RecordCommandBuffer(int frameIndex, VkRende
 	mat->Update(frameIndex);
 	int descCount;
 	std::vector<VkDescriptorSet> descSetVec = mat->GetDescriptorSet(frameIndex, descCount);
+	VkDescriptorSet worldSet = mWorld->GetWorldParamsSet(mat, frameIndex);
 	if (mObject.empty())
 	{
 		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, descSetVec.size(), descSetVec.data(), 0, nullptr);
 		//vkCmdBindVertexBuffers(commandBuffer, 0, 1, VK_NULL_HANDLE, offsets);
+		std::vector<VkDescriptorSet> submitDescSetVec = mat->GetDescriptorSet(frameIndex, descCount, true);
+		if (worldSet != VK_NULL_HANDLE)
+			submitDescSetVec.push_back(worldSet);
+		vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, submitDescSetVec.size(), submitDescSetVec.data(), 0, nullptr);
 		vkCmdDraw(commandBuffer, mEmptyVertexCount, 1, 0, 0);
 	}
 	else 
@@ -323,7 +343,6 @@ VkCommandBuffer VulkanRenderingNode::RecordCommandBuffer(int frameIndex, VkRende
 			VkDescriptorSet objSet = objPtr->GetDescSet(frameIndex);
 			if (objSet != VK_NULL_HANDLE)
 				submitDescSetVec.push_back(objSet);
-			VkDescriptorSet worldSet = mWorld->GetWorldParamsSet(mat, frameIndex);
 			if (worldSet != VK_NULL_HANDLE)
 				submitDescSetVec.push_back(worldSet);
 			vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, submitDescSetVec.size(), submitDescSetVec.data(), 0, nullptr);

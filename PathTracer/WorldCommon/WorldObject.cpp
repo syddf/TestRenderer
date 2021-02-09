@@ -109,6 +109,6 @@ VkDescriptorSet WorldObject::GetDescSet(int frameIndex)
 
 void WorldObject::InitMaterialResource()
 {
-	auto material = ResourceCreator::CreateMaterial(mMaterialName);
+	auto material = ResourceCreator::CreateMaterial(mMaterialName, MaterialMode::Normal);
 	material->ExportPerObjectDescriptor(mMaterialResource.SetLayout, mMaterialResource.DescPool, mMaterialResource.DescSet, mMaterialResource.Params, mMaterialResource.CBuffer);
 }

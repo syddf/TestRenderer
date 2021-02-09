@@ -1,21 +1,23 @@
-#version 430
+#version 450
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(points) in;
 layout(triangle_strip, max_vertices = 24) out;
 
-layout(set = 0, binding = 1) uniform Matrix
+layout(set = 2, binding = 2) uniform Matrix
 {
     mat4 view;
     mat4 proj;
 } matrices;
 
-layout(set = 0, binding = 2) uniform VoxelParams
+layout(set = 2, binding = 1) uniform VoxelParams
 {
     vec3 worldMinPoint;
     float voxelSize;
+    float voxelDimension;
 } params;
 
+layout(location = 0)in vec4 albedo[];
 layout(location = 0)out vec4 voxelColor;
 
 struct ViewFrustum
@@ -39,6 +41,10 @@ bool InFrustum(vec4 viewPos, ViewFrustum frustum)
 
 void main()
 {
+    if(albedo[0].r == 0.0f && albedo[0].g == 0.0f && albedo[0].b == 0.0f)
+    {
+	return;
+    }
     const vec4 cubeVertices[8] = vec4[8] 
     (
         vec4( 0.5f,  0.5f,  0.5f, 0.0f),
@@ -101,7 +107,7 @@ void main()
         for(int vertex = 0; vertex < 4; ++vertex)
         {
             gl_Position = projectedVertices[cubeIndices[face * 4 + vertex]];
-            voxelColor = color[vertex];
+            voxelColor = albedo[0];
             EmitVertex();
         }
 

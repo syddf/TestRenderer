@@ -82,6 +82,7 @@ ImportAsset* SPIRVImporter::GetSPIRVShaderParams(std::vector<char>& data)
 	}
 	ImportAsset* asset = new ImportSPIRVShaderData();
 	static_cast<ImportSPIRVShaderData*>(asset)->ShaderType = mSPIRVGlobalState.EntryPoint.shaderType;
+	static_cast<ImportSPIRVShaderData*>(asset)->PrimitiveInput = mSPIRVGlobalState.EntryPoint.primitiveInput;
     ExportAllBlock(asset);
 	ExportAllInput(asset);
 	ExportAllPushConstant(asset);
@@ -100,6 +101,9 @@ void SPIRVImporter::ProcessInstruction(short op, const std::vector<SPIRVWord>& o
 			break;
 		case 15:
 			ProcessEntryPoint(operands);
+			break;
+		case 16:
+			ProcessOpExecutionMode(operands);
 			break;
 		case 32:
 			ProcessOpTypePointer(operands);
@@ -134,6 +138,8 @@ void SPIRVImporter::ProcessEntryPoint(const std::vector<SPIRVWord>& operands)
 		mSPIRVGlobalState.EntryPoint.shaderType = ShaderTypeEnum::ImportFragmentShader;
 	else if (operands[0].wordValue == 5)
 		mSPIRVGlobalState.EntryPoint.shaderType = ShaderTypeEnum::ImportComputeShader;
+	else if (operands[0].wordValue == 3)
+		mSPIRVGlobalState.EntryPoint.shaderType = ShaderTypeEnum::ImportGeometryShader;
 	mSPIRVGlobalState.EntryPoint.entryPointId = operands[1].wordValue;
 	int strIndex = 2;
 	mSPIRVGlobalState.EntryPoint.name = LoadString(operands, strIndex);
@@ -319,6 +325,22 @@ void SPIRVImporter::ProcessOpMemberDecorate(const std::vector<SPIRVWord>& operan
 		decorate.member = member;
 		decorate.offset = val;
 		mSPIRVGlobalState.OpMemberOffsetDecorate.push_back(decorate);
+	}
+}
+
+void SPIRVImporter::ProcessOpExecutionMode(const std::vector<SPIRVWord>& operands)
+{
+	int entryPointValue = operands[0].wordValue;
+	if (mSPIRVGlobalState.EntryPoint.shaderType == ShaderTypeEnum::ImportGeometryShader)
+	{
+		if (operands[1].wordValue == 19)
+		{
+			mSPIRVGlobalState.EntryPoint.primitiveInput = GeometryPrimitiveInput::PI_POINTS;
+		}
+		else if (operands[1].wordValue == 22)
+		{
+			mSPIRVGlobalState.EntryPoint.primitiveInput = GeometryPrimitiveInput::PI_TRIANGLE;
+		}
 	}
 }
 

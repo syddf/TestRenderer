@@ -76,6 +76,17 @@ IImage::ImagePtr ResourceCreator::CreateImageFromFile(std::string imageFile)
 	return imgPtr;
 }
 
+IImage::ImagePtr ResourceCreator::CreateInnerImage(ImageDesc imageDesc, std::string imageName)
+{
+	if (imageMap.find(imageName) != imageMap.end())
+	{
+		return imageMap[imageName];
+	}
+	IImage::ImagePtr imgPtr = std::make_shared<VulkanImage>(imageDesc);
+	imageMap[imageName] = imgPtr;
+	return imgPtr;
+}
+
 IBuffer::BufferPtr ResourceCreator::CreateVertexBuffer(char * bufferData, UInt32 bufferSize)
 {
 	BufferDesc desc = {};
@@ -98,7 +109,7 @@ IBuffer::BufferPtr ResourceCreator::CreateIndexBuffer(char * bufferData, UInt32 
 	return indexBuffer;
 }
 
-VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string materialName, std::string vertexShader, std::string fragmentShader, std::string geometryShader)
+VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string materialName, MaterialMode mode, std::string vertexShader, std::string fragmentShader, std::string geometryShader)
 {
 	auto getShaderName = [](std::string file)->std::string
 	{
@@ -113,7 +124,7 @@ VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string material
 	materialShader.VertexShader = CreateShaderFromFile(vertexShader);
 	materialShader.FragmentShader = CreateShaderFromFile(fragmentShader);
 	materialShader.GeometryShader = CreateShaderFromFile(geometryShader);
-	materialMap[materialName] = std::make_shared<VulkanMaterial>(materialShader, getShaderName(vertexShader) + getShaderName(fragmentShader) + getShaderName(geometryShader));
+	materialMap[materialName] = std::make_shared<VulkanMaterial>(materialShader, getShaderName(vertexShader) + getShaderName(fragmentShader) + getShaderName(geometryShader), mode);
 	return materialMap[materialName];
 }
 
@@ -242,6 +253,11 @@ VulkanShader::VulkanShaderPtr ResourceCreator::CreateShaderFromFile(std::string 
 		params.PushConstantVec = shaderData->ShaderPushConstantInfo;
 		VulkanShader::VulkanShaderPtr shader = std::make_shared<VulkanShader>(shaderData->ShaderData, params, GetVulkanShaderType(shaderData->ShaderType));
 		shaderMap[shaderFile] = shader;
+
+		if (shaderData->ShaderType == ShaderTypeEnum::ImportGeometryShader)
+		{
+			shader->SetPrimitive(shaderData->PrimitiveInput);
+		}
 	}
 	return shaderMap[shaderFile];
 }

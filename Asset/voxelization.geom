@@ -29,8 +29,8 @@ layout(set = 1, binding = 0) uniform MeshData
 layout(location = 0) out vec3 outWSPosition;
 layout(location = 1) out vec3 outPosition;
 layout(location = 2) out vec3 outNormal;
-layout(location = 3) out vec4 outTriangleAABB;
-layout(location = 4) out vec2 outTexCoord;
+layout(location = 3) out vec3 outTexCoord;
+layout(location = 4) out vec4 outTriangleAABB;
 
 int CalculateAxis()
 {
@@ -50,7 +50,10 @@ int CalculateAxis()
     	{
 	    return 1;
     	}
-	return 2;
+	else
+	{
+	    return 2;
+	}
 }
 
 vec4 AxisAlignedBoundingBox(vec4 pos[3], vec2 pixelDiagonal)
@@ -78,10 +81,27 @@ void main()
 	trianglePlane.xyz = cross(pos[1].xyz - pos[0].xyz, pos[2].xyz - pos[0].xyz);
 	trianglePlane.xyz = normalize(trianglePlane.xyz);
 	trianglePlane.w = -dot(pos[0].xyz, trianglePlane.xyz);
+	vec3 texCoord[3];
+	texCoord[0].xy = inTexCoord[0];
+	texCoord[1].xy = inTexCoord[1];
+	texCoord[2].xy = inTexCoord[2];
+    	if (dot(trianglePlane.xyz, vec3(0.0, 0.0, 1.0)) < 0.0)
+    	{
+        	 	vec4 vertexTemp = pos[2];
+        		vec3 texCoordTemp = texCoord[2];
+        
+        		pos[2] = pos[1];
+        		texCoord[2] = texCoord[1];
+    
+        		pos[1] = vertexTemp;
+       		texCoord[1] = texCoordTemp;
+    	}
+
 	vec2 halfPixel = vec2(1.0f / params.voxelDimension);
  	if(trianglePlane.z == 0.0f) return;
 	vec3 planes[3];
-	outTriangleAABB = AxisAlignedBoundingBox(pos, halfPixel);
+                vec4 aabb = AxisAlignedBoundingBox(pos, halfPixel);
+	//outTriangleAABB = AxisAlignedBoundingBox(pos, halfPixel);
 	planes[0] = cross(pos[0].xyw - pos[2].xyw, pos[2].xyw);
 	planes[1] = cross(pos[1].xyw - pos[0].xyw, pos[0].xyw);
 	planes[2] = cross(pos[2].xyw - pos[1].xyw, pos[1].xyw);
@@ -113,9 +133,10 @@ void main()
 		gl_Position = pos[i];
 		outPosition = pos[i].xyz;
 		outNormal = inNormal[i];
-		outTexCoord = inTexCoord[i];
+		outTexCoord = texCoord[i];
+		outTexCoord.y = 1.0f - outTexCoord.y;
 		outWSPosition = voxelPos.xyz * params.voxelDimension;
-
+		outTriangleAABB = aabb;
 		EmitVertex();
 	}
 

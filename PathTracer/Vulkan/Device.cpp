@@ -248,6 +248,7 @@ void VulkanDevice::InitializeLogicalDevice()
 	createInfo.queueCreateInfoCount = queueCreateInfoVec.size();
 	VkPhysicalDeviceFeatures deviceFeatures{};
 	deviceFeatures.geometryShader = VK_TRUE;
+	deviceFeatures.vertexPipelineStoresAndAtomics = VK_TRUE;
 	deviceFeatures.fragmentStoresAndAtomics = VK_TRUE;
 	createInfo.pEnabledFeatures = &deviceFeatures;
 	createInfo.enabledExtensionCount = 0;

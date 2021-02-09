@@ -25,6 +25,15 @@ void VulkanRenderingPipeline::GenerateRenderingGraph(std::vector<RenderingPipeli
 
 	std::vector<std::vector<int>> graphEdgeMap;
 	graphEdgeMap.resize(nodesVec.size(), std::vector<int>(nodesVec.size(), 0));
+
+	for (size_t i = 0; i < nodesVec.size(); i++)
+	{
+		for (auto dependingNodeIndex : nodesVec[i].DependingNodeIndex)
+		{
+			graphEdgeMap[dependingNodeIndex][i] = 1;
+		}
+	}
+
 	for (size_t i = 0; i < nodesVec.size(); i ++)
 	{
 		for (size_t j = 0; j < nodesVec[i].DependingAttachmentViewName.size(); j ++)
@@ -136,32 +145,37 @@ void VulkanRenderingPipeline::TopologySort(std::vector<RenderingPipelineNodeDesc
 std::vector<VkSemaphore> VulkanRenderingPipeline::SubmitRenderingCommands(int frameIndex, VkQueue graphicsQueue, VkFence renderFinishFence)
 {
 	std::vector<VkSemaphore> sigSemaphore;
+	sigSemaphore.resize(1);
 	std::vector<VkSubmitInfo> submitVec;
 	submitVec.reserve(mRenderingNodesVec.size());
 	for (auto node : mRenderingNodesVec)
 	{
-		auto commandBuffer = std::dynamic_pointer_cast<VulkanPipelineNode>(node)->RecordCommandBuffer(frameIndex);
+		auto& commandBuffer = std::dynamic_pointer_cast<VulkanPipelineNode>(node)->RecordCommandBuffer(frameIndex);
 		auto& waitSema = std::dynamic_pointer_cast<VulkanPipelineNode>(node)->GetWaitSemaphore(frameIndex);
+		auto& waitFlags = std::dynamic_pointer_cast<VulkanPipelineNode>(node)->GetWaitFlags();
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.pCommandBuffers = &commandBuffer;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.waitSemaphoreCount = waitSema.size();
+
 		if (submitInfo.waitSemaphoreCount > 0)
 		{
 			submitInfo.pWaitSemaphores = waitSema.data();
-			std::vector<VkPipelineStageFlags> waitFlags;
-			waitFlags.resize(waitSema.size(), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 			submitInfo.pWaitDstStageMask = waitFlags.data(); // to be modified
 		}
-		auto signalSema = std::dynamic_pointer_cast<VulkanPipelineNode>(node)->GetSignalSemaphore(frameIndex);
+		auto& signalSema = std::dynamic_pointer_cast<VulkanPipelineNode>(node)->GetSignalSemaphore(frameIndex);
 		if (signalSema != VK_NULL_HANDLE)
 		{
 			submitInfo.pSignalSemaphores = &signalSema;
 			submitInfo.signalSemaphoreCount = 1;
+			sigSemaphore[0] = signalSema;
+			vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 		}
-		submitVec.push_back(submitInfo);
-		sigSemaphore.push_back(signalSema);
+		else
+		{
+			submitVec.push_back(submitInfo);
+		}
 	}
 	vkQueueSubmit(graphicsQueue, submitVec.size(), submitVec.data(), renderFinishFence);
 	return sigSemaphore;

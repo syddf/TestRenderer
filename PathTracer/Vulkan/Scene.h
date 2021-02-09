@@ -13,12 +13,13 @@ public:
 	~VulkanSceneData();
 
 public:
-	std::vector<RenderingNodeDesc> ExportAllRenderingNodeByMaterial(std::string vertexShaderFile, std::string fragShaderFile, std::string geometryShaderFile, std::string scenePrefix);
+	std::vector<RenderingNodeDesc> ExportAllRenderingNodeByMaterial(std::string vertexShaderFile, std::string fragShaderFile, std::string geometryShaderFile, std::string scenePrefix, MaterialMode materialMode);
 	std::string GetSceneMaterialName(int index, std::string prefix);
 	std::string GetSceneMeshName(int index, std::string prefix);
 	std::string GetSceneObjectName(int index, std::string prefix);
 	void AddUpdateMaterial(std::string materialName);
 	void UpdateSceneData(int frameIndex);
+	std::shared_ptr<World> GetWorldData() { return mWorldData; }
 
 private:
 	void InitializeSceneData();
