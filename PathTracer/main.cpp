@@ -13,6 +13,7 @@
 #include "Vulkan/RenderingPipeline.h"
 #include "Vulkan/PresentEngine.h"
 #include "Vulkan/Scene.h"
+#include "Vulkan/ComputePass.h"
 
 #include <stdio.h>
 #include <direct.h>
@@ -27,12 +28,20 @@ VulkanPresentEngine* presentEngine;
 
 void test(VkQueue graphicsQueue, VulkanWindow* window)
 {
+	auto computeMaterial = ResourceCreator::CreateMaterial("test4", "D:\\OfflineRenderer\\Asset\\clearVoxelMapComp.data");
 	//auto ttmaterial = ResourceCreator::CreateMaterial("test3", "D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data");
 	auto tmaterial = ResourceCreator::CreateMaterial("test2", MaterialMode::Normal, "D:\\OfflineRenderer\\Asset\\renderVoxelVert.data", "D:\\OfflineRenderer\\Asset\\renderVoxelFrag.data", "D:\\OfflineRenderer\\Asset\\renderVoxelGeom.data");
 	//auto material = ResourceCreator::CreateMaterial("test1", "D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data");
 	
 	VulkanSceneData * scene = new VulkanSceneData("D:\\Resource\\res\\sponza.data");
 	ResourceCreator::CreateDepthStencilAttachment("DepthStencilAttachment", gScreenWidth, gScreenHeight);
+	
+	ComputeNodeDesc cnd = {};
+	cnd.Invocation = Vec3(256, 256, 256);
+	cnd.MaterialAddr = (char*)(computeMaterial.get());
+	cnd.World = scene->GetWorldData().get();
+
+	ComputeNode* node = new ComputeNode(cnd);
 
 	RenderingPipelineNodeDesc voxelizationPass = {};
 	voxelizationPass.NodeName = "voxelization";
@@ -102,7 +111,8 @@ void compileShader()
 		"voxelization.geom",
 		"renderVoxel.vert",
 		"renderVoxel.frag",
-		"renderVoxel.geom"
+		"renderVoxel.geom",
+		"clearVoxelMap.comp"
 	};
 	std::vector<std::string> newShaderPathVec;
 	char buffer[MAXPATH];

@@ -4,4 +4,5 @@ D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRender
 D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxel.vert -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxelVert.spv
 D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxel.frag -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxelFrag.spv
 D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxel.geom -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxelGeom.spv
+D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\clearVoxelMap.comp -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\clearVoxelMapComp.spv
 pause

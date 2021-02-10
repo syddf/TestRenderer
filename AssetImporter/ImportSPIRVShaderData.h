@@ -142,7 +142,7 @@ struct ImportSPIRVShaderData : public ImportAsset
 	std::vector<ShaderBlockInfo> ShaderParamsBlockInfo;
 	std::vector<ShaderInputInfo> ShaderInputInfo;
 	std::vector<ShaderPushConstantInfo> ShaderPushConstantInfo;
-
+	Vec3 ComputeLocalSize;
 
 	void Serialize(const std::string& TarFileName)
 	{
@@ -155,6 +155,7 @@ struct ImportSPIRVShaderData : public ImportAsset
 		File.Write(ShaderParamsBlockInfo);
 		File.Write(ShaderInputInfo);
 		File.Write(ShaderPushConstantInfo);
+		File.Write(ComputeLocalSize);
 	}
 
 	void Deserialize(const std::string& SrcFileName)
@@ -168,5 +169,6 @@ struct ImportSPIRVShaderData : public ImportAsset
 		File.Read(ShaderParamsBlockInfo);
 		File.Read(ShaderInputInfo);
 		File.Read(ShaderPushConstantInfo);
+		File.Read(ComputeLocalSize);
 	}
 };

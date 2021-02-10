@@ -7,16 +7,20 @@ struct VulkanMaterialShader
 	IShader::ShaderPtr VertexShader;
 	IShader::ShaderPtr FragmentShader;
 	IShader::ShaderPtr GeometryShader;
+
+	IShader::ShaderPtr ComputeShader;
 };
 
 class VulkanMaterial
 {
 public:
+	VulkanMaterial(VulkanMaterialShader computeMaterialShader, std::string shaderGroupName);
 	VulkanMaterial(VulkanMaterialShader materialShader, std::string shaderGroupName, MaterialMode materialMode);
 	~VulkanMaterial();
 	using MaterialPtr = std::shared_ptr<VulkanMaterial>;
 
 private:
+	void InitMaterial(VulkanMaterialShader materialShader, std::string shaderGroupName, MaterialMode materialMode);
 	void MergeShaderParams();
 	void CreateVulkanDescLayout();
 	void CreateVulkanDescSet();
@@ -46,6 +50,7 @@ public:
 	VkPipelineVertexInputStateCreateInfo GetVertexInputStateCreateInfo(std::vector<VkVertexInputAttributeDescription>& attributeDescVec, VkVertexInputBindingDescription& bindingDesc);
 	VkPipelineRasterizationStateCreateInfo GetRasterizationStateCreateInfo();
 	std::vector<VkDescriptorSet> GetDescriptorSet(int frameIndex, int& descCount, bool addObjectSet = false);
+	Vec3 GetComputeLocalSize() { return std::static_pointer_cast<VulkanShader>(mShader.ComputeShader)->GetLocalSize(); };
 
 public:
 	std::string GetShaderGroupName() const { return mShaderGroupName; }
@@ -62,6 +67,7 @@ public:
 	void ExportOtherRateDescriptor(VkDescriptorSetLayout& setLayout, VkDescriptorPool& descPool, std::vector<VkDescriptorSet>& descSet, MaterialParams& params, std::vector<std::map<int, IBuffer::BufferPtr>>& cBuffer, int descSetIndex);
 	void ExportPerObjectDescriptor(VkDescriptorSetLayout& setLayout, VkDescriptorPool& descPool, std::vector<VkDescriptorSet>& descSet, MaterialParams& params, std::vector<std::map<int, IBuffer::BufferPtr>>& cBuffer);
 	void ExportPerCameraDescriptor(VkDescriptorSetLayout& setLayout, VkDescriptorPool& descPool, std::vector<VkDescriptorSet>& descSet, MaterialParams& params, std::vector<std::map<int, IBuffer::BufferPtr>>& cBuffer);
+	bool IsComputeMaterial() const { return mComputeMaterial; };
 
 private:
 	std::vector<bool> mConstantBufferDirty;
@@ -100,4 +106,5 @@ private:
 	std::vector<std::map<int, std::map<int, IBuffer::BufferPtr>>> mMaterialUniformBuffer;
 
 	std::string mShaderGroupName;
+	bool mComputeMaterial;
 };

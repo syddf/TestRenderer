@@ -17,7 +17,37 @@ void UpdateConstantBufferParam(int frameIndex, int offset, IBuffer::BufferPtr bu
 }
 
 
+VulkanMaterial::VulkanMaterial(VulkanMaterialShader computeMaterialShader, std::string shaderGroupName)
+{
+	assert(computeMaterialShader.VertexShader == nullptr);
+	assert(computeMaterialShader.FragmentShader == nullptr);
+	assert(computeMaterialShader.GeometryShader == nullptr);
+	assert(computeMaterialShader.ComputeShader != nullptr);
+	InitMaterial(computeMaterialShader, shaderGroupName, MaterialMode::Normal);
+	mComputeMaterial = true;
+}
+
 VulkanMaterial::VulkanMaterial(VulkanMaterialShader materialShader, std::string shaderGroupName, MaterialMode materialMode)
+{
+	assert(materialShader.VertexShader != nullptr);
+	assert(materialShader.FragmentShader != nullptr);
+	assert(materialShader.GeometryShader != nullptr);
+	assert(materialShader.ComputeShader == nullptr);
+	InitMaterial(materialShader, shaderGroupName, materialMode);
+	mComputeMaterial = false;
+}
+
+VulkanMaterial::~VulkanMaterial()
+{
+	for (auto descLayout : mVKDescSetLayoutVec)
+	{
+		vkDestroyDescriptorSetLayout(gVulkanDevice, descLayout, nullptr);
+	}
+	vkFreeDescriptorSets(gVulkanDevice, mDescriptorPool, mVKDescSetVec.size(), mVKDescSetVec.data());
+	vkDestroyDescriptorPool(gVulkanDevice, mDescriptorPool, nullptr);
+}
+
+void VulkanMaterial::InitMaterial(VulkanMaterialShader materialShader, std::string shaderGroupName, MaterialMode materialMode)
 {
 	mShader = materialShader;
 	mShaderGroupName = shaderGroupName;
@@ -32,16 +62,7 @@ VulkanMaterial::VulkanMaterial(VulkanMaterialShader materialShader, std::string 
 
 	mConstantBufferDirty.resize(gSwapChainImageCount, false);
 	mImageDirty.resize(gSwapChainImageCount, false);
-}
-
-VulkanMaterial::~VulkanMaterial()
-{
-	for (auto descLayout : mVKDescSetLayoutVec)
-	{
-		vkDestroyDescriptorSetLayout(gVulkanDevice, descLayout, nullptr);
-	}
-	vkFreeDescriptorSets(gVulkanDevice, mDescriptorPool, mVKDescSetVec.size(), mVKDescSetVec.data());
-	vkDestroyDescriptorPool(gVulkanDevice, mDescriptorPool, nullptr);
+	mComputeMaterial = false;
 }
 
 void VulkanMaterial::MergeShaderParams()
@@ -50,6 +71,7 @@ void VulkanMaterial::MergeShaderParams()
 	if (mShader.VertexShader) totalParams += std::static_pointer_cast<VulkanShader>(mShader.VertexShader)->GetShaderParams();
 	if (mShader.FragmentShader) totalParams += std::static_pointer_cast<VulkanShader>(mShader.FragmentShader)->GetShaderParams();
 	if (mShader.GeometryShader) totalParams += std::static_pointer_cast<VulkanShader>(mShader.GeometryShader)->GetShaderParams();
+	if (mShader.ComputeShader) totalParams += std::static_pointer_cast<VulkanShader>(mShader.ComputeShader)->GetShaderParams();
 	totalParams.Sort();
 
 	auto AddParams = [&](ShaderBlockInfo & block, ShaderParameter& param, MaterialParams& allParams)->void
@@ -237,6 +259,7 @@ void VulkanMaterial::CreateVulkanDescLayout()
 	AddShader(std::static_pointer_cast<VulkanShader>(mShader.VertexShader), VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT);
 	AddShader(std::static_pointer_cast<VulkanShader>(mShader.FragmentShader), VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT);
 	AddShader(std::static_pointer_cast<VulkanShader>(mShader.GeometryShader), VkShaderStageFlagBits::VK_SHADER_STAGE_GEOMETRY_BIT);
+	AddShader(std::static_pointer_cast<VulkanShader>(mShader.ComputeShader), VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT);
 
 	CreateUniformBuffers(descSetLayoutMap, descBindingSizeMap);
 
@@ -339,6 +362,12 @@ void VulkanMaterial::CreateShaderStageInfo()
 	{
 		shaderStageCreateInfo.stage = VkShaderStageFlagBits::VK_SHADER_STAGE_GEOMETRY_BIT;
 		shaderStageCreateInfo.module = *reinterpret_cast<VkShaderModule*>(mShader.GeometryShader->GetGPUShaderHandleAddress());
+		mShaderStageInfoVec.push_back(shaderStageCreateInfo);
+	}
+	if (mShader.ComputeShader)
+	{
+		shaderStageCreateInfo.stage = VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT;
+		shaderStageCreateInfo.module = *reinterpret_cast<VkShaderModule*>(mShader.ComputeShader->GetGPUShaderHandleAddress());
 		mShaderStageInfoVec.push_back(shaderStageCreateInfo);
 	}
 }

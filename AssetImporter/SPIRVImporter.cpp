@@ -342,6 +342,14 @@ void SPIRVImporter::ProcessOpExecutionMode(const std::vector<SPIRVWord>& operand
 			mSPIRVGlobalState.EntryPoint.primitiveInput = GeometryPrimitiveInput::PI_TRIANGLE;
 		}
 	}
+
+	if (mSPIRVGlobalState.EntryPoint.shaderType == ShaderTypeEnum::ImportComputeShader)
+	{
+		if (operands[1].wordValue == 17)
+		{
+			mSPIRVGlobalState.EntryPoint.computeLocalSize = Vec3(operands[2].wordValue, operands[3].wordValue, operands[4].wordValue);
+		}
+	}
 }
 
 std::string SPIRVImporter::LoadString(const std::vector<SPIRVWord>& operands, int& index)

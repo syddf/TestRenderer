@@ -28,7 +28,6 @@ struct RenderingPipelineNodeDesc
 	bool AffectOtherNode;
 };
 
-
 class VulkanRenderingNode
 {
 public:

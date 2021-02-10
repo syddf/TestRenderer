@@ -1,0 +1,35 @@
+#version 450
+#extension GL_ARB_shader_image_load_store : require
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+layout(set = 0, binding = 0) uniform EmptyMaterialParams
+{
+	float padding;
+} materialParams;
+
+layout(set = 1, binding = 0) uniform EmptyObjectParams
+{
+	float padding;
+} objectParams;
+
+layout(set = 2, binding = 0, rgba8) uniform image3D voxelAlbedo_IN;
+layout(set = 2, binding = 1, rgba8) uniform writeonly image3D voxelNormal_IN;
+layout(set = 2, binding = 2, rgba8) uniform writeonly image3D voxelEmissive_IN;
+layout(set = 2, binding = 3) uniform sampler3D staticVoxelFlag_IN;
+
+void main()
+{
+	const float EPSILON = 1e-30;
+	int dimension = imageSize(voxelAlbedo_IN).x;
+	if(gl_GlobalInvocationID.x >= dimension || gl_GlobalInvocationID.y >= dimension || gl_GlobalInvocationID.z >= dimension)
+		return;
+	ivec3 writePos = ivec3(gl_GlobalInvocationID);
+	if(imageLoad(voxelAlbedo_IN, writePos).a < EPSILON)
+		return;
+	if(texelFetch(staticVoxelFlag_IN, writePos, 0).r > EPSILON)
+		return;
+    	imageStore(voxelAlbedo_IN, writePos, vec4(0.0));
+    	imageStore(voxelNormal_IN, writePos, vec4(0.0));
+    	imageStore(voxelEmissive_IN, writePos, vec4(0.0));
+}

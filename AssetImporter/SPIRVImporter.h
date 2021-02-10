@@ -44,6 +44,7 @@ struct SPIRV_EntryPoint
 	int entryPointId;
 	std::string name;
 	std::vector<int> opId;
+	Vec3 computeLocalSize;
 };
 
 struct SPIRV_OpDescriptorDecorate

@@ -45,13 +45,15 @@ public:
 	char* GetGPUShaderHandleAddress() { return reinterpret_cast<char*>(&mShaderModule); };
 	VulkanShaderType GetShaderType() const { return mShaderType; }
 	GeometryPrimitiveInput GetPrimitiveInput() const { return mPrimitive; }
-	VkVertexInputBindingDescription GetInputBindingDescription(std::vector<VkVertexInputAttributeDescription>& attributeDescVec);
-	
+	VkVertexInputBindingDescription GetInputBindingDescription(std::vector<VkVertexInputAttributeDescription>& attributeDescVec);	
+	Vec3 GetLocalSize() const { return mComputeLocalSize; }
 	void SetPrimitive(GeometryPrimitiveInput primitiveInput) { mPrimitive = primitiveInput;  }
+	void SetLocalSize(Vec3 localSize) { mComputeLocalSize = localSize; };
 
 private:
 	VulkanShaderType mShaderType;
 	GeometryPrimitiveInput mPrimitive;
 	VkShaderModule mShaderModule;
 	VulkanShaderParams mVulkanShaderParams;
+	Vec3 mComputeLocalSize;
 };

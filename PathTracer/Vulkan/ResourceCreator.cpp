@@ -109,6 +109,23 @@ IBuffer::BufferPtr ResourceCreator::CreateIndexBuffer(char * bufferData, UInt32 
 	return indexBuffer;
 }
 
+VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string materialName, std::string computeShader)
+{
+	auto getShaderName = [](std::string file)->std::string
+	{
+		return file.substr(file.find_last_of('\\') + 1);
+	};
+
+	if (materialMap.find(materialName) != materialMap.end())
+	{
+		return materialMap[materialName];
+	}
+	VulkanMaterialShader materialShader = {};
+	materialShader.ComputeShader = CreateShaderFromFile(computeShader);
+	materialMap[materialName] = std::make_shared<VulkanMaterial>(materialShader, getShaderName(computeShader));
+	return materialMap[materialName];
+}
+
 VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string materialName, MaterialMode mode, std::string vertexShader, std::string fragmentShader, std::string geometryShader)
 {
 	auto getShaderName = [](std::string file)->std::string
@@ -257,6 +274,11 @@ VulkanShader::VulkanShaderPtr ResourceCreator::CreateShaderFromFile(std::string 
 		if (shaderData->ShaderType == ShaderTypeEnum::ImportGeometryShader)
 		{
 			shader->SetPrimitive(shaderData->PrimitiveInput);
+		}
+
+		if (shaderData->ShaderType == ShaderTypeEnum::ImportComputeShader)
+		{
+			shader->SetLocalSize(shaderData->ComputeLocalSize);
 		}
 	}
 	return shaderMap[shaderFile];
