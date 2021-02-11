@@ -76,14 +76,15 @@ IImage::ImagePtr ResourceCreator::CreateImageFromFile(std::string imageFile)
 	return imgPtr;
 }
 
-IImage::ImagePtr ResourceCreator::CreateInnerImage(ImageDesc imageDesc, std::string imageName)
+IImage::ImagePtr ResourceCreator::CreateInnerImage(ImageDesc imageDesc, std::string imageName, int frameIndex)
 {
-	if (imageMap.find(imageName) != imageMap.end())
+	std::string frameImageName = imageName + std::to_string(frameIndex);
+	if (imageMap.find(frameImageName) != imageMap.end())
 	{
-		return imageMap[imageName];
+		return imageMap[frameImageName];
 	}
 	IImage::ImagePtr imgPtr = std::make_shared<VulkanImage>(imageDesc);
-	imageMap[imageName] = imgPtr;
+	imageMap[frameImageName] = imgPtr;
 	return imgPtr;
 }
 

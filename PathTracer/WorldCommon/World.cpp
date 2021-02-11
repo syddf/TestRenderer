@@ -101,7 +101,7 @@ void World::Update(int frameIndex)
 	static float theta = 0.0f;
 	Vec3 point = Vec3(300.0f, 200.0f, 0.0f);
 	mMainCamera.SetParams(((float)gScreenWidth) / gScreenHeight, 0.1f, 10000.0f, glm::radians(60.0f), Vec3(cos(theta), 0.0f, sin(theta)), point, Vec3(0, -1, 0));
-	theta += 0.01f;
+	//theta += 0.01f;
 
 	float voxelDimension = mWorldParams.VoxelDimension;
 	
@@ -214,7 +214,8 @@ void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 
 				for (int i = 0; i < gSwapChainImageCount; i++)
 				{
-					materialParams.InnerImage[i][image.second.Binding] = ResourceCreator::CreateInnerImage(desc, image.first);
+					materialParams.InnerImage[i][image.second.Binding] = ResourceCreator::CreateInnerImage(desc, image.first, i);
+					materialParams.InnerImage[i][image.second.Binding]->AddImageView(image.second.Format);
 				}
 			}
 		}
@@ -233,7 +234,7 @@ void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 					auto pImage = materialParams.InnerImage[i][image.second.Binding];
 					VkDescriptorImageInfo imageInfo = {};
 					imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-					imageInfo.imageView = *((VkImageView*)pImage->GetGPUImageViewHandleAddress());
+					imageInfo.imageView = *((VkImageView*)pImage->GetGPUImageViewHandleAddress(image.second.Format));
 					imageInfo.sampler = *((VkSampler*)pImage->GetSamplerHandleAddress());
 					descImageInfoVec.push_back(imageInfo);
 

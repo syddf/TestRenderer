@@ -83,6 +83,7 @@ ImportAsset* SPIRVImporter::GetSPIRVShaderParams(std::vector<char>& data)
 	ImportAsset* asset = new ImportSPIRVShaderData();
 	static_cast<ImportSPIRVShaderData*>(asset)->ShaderType = mSPIRVGlobalState.EntryPoint.shaderType;
 	static_cast<ImportSPIRVShaderData*>(asset)->PrimitiveInput = mSPIRVGlobalState.EntryPoint.primitiveInput;
+	static_cast<ImportSPIRVShaderData*>(asset)->ComputeLocalSize = mSPIRVGlobalState.EntryPoint.computeLocalSize;
     ExportAllBlock(asset);
 	ExportAllInput(asset);
 	ExportAllPushConstant(asset);
@@ -573,6 +574,7 @@ void SPIRVImporter::ExportImageShaderParameters(int structId, int offset, std::v
 	static std::map<int, std::string> imageFormatMap = 
 	{
 		{ 0, "Unknown"},
+		{ 4, "Rgba8"},
 		{ 15, "R8"},
 		{ 33, "R32ui"}
 	};

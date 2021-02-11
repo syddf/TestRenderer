@@ -65,11 +65,9 @@ void imageAtomicRGBA8AvgAlbedo(ivec3 coords, vec4 value)
     uint newVal = convVec4ToRGBA8(value);
     uint prevStoredVal = 0;
     uint curStoredVal;
-    uint numIterations = 0;
 
     while((curStoredVal = imageAtomicCompSwap(voxelAlbedo_IN, coords, prevStoredVal, newVal)) 
-            != prevStoredVal
-            && numIterations < 255)
+            != prevStoredVal)
     {
         prevStoredVal = curStoredVal;
         vec4 rval = convRGBA8ToVec4(curStoredVal);
@@ -77,8 +75,6 @@ void imageAtomicRGBA8AvgAlbedo(ivec3 coords, vec4 value)
         vec4 curValF = rval + value;    // Add
         curValF.rgb /= curValF.a;       // Renormalize
         newVal = convVec4ToRGBA8(curValF);
-
-        ++numIterations;
     }
 }
 
@@ -88,11 +84,9 @@ void imageAtomicRGBA8AvgNormal(ivec3 coords, vec4 value)
     uint newVal = convVec4ToRGBA8(value);
     uint prevStoredVal = 0;
     uint curStoredVal;
-    uint numIterations = 0;
 
     while((curStoredVal = imageAtomicCompSwap(voxelNormal_IN, coords, prevStoredVal, newVal)) 
-            != prevStoredVal
-            && numIterations < 255)
+            != prevStoredVal)
     {
         prevStoredVal = curStoredVal;
         vec4 rval = convRGBA8ToVec4(curStoredVal);
@@ -100,8 +94,6 @@ void imageAtomicRGBA8AvgNormal(ivec3 coords, vec4 value)
         vec4 curValF = rval + value;    // Add
         curValF.rgb /= curValF.a;       // Renormalize
         newVal = convVec4ToRGBA8(curValF);
-
-        ++numIterations;
     }
 }
 
@@ -125,14 +117,6 @@ void main()
 	ivec3 position = ivec3(inWSPosition);
 	vec4 albedo = texture(tDiffuse, inTexCoord.xy);
 	float opacity = albedo.a;
-    	if(voxelParams.staticVoxelFlag > 0)
-	{
-		bool isStatic = imageLoad(staticVoxelFlag_IN, position).r > 0.0f;
-		if(isStatic)
-		{
-        			opacity = 0.0f;
-		}
-    	}
  	if(opacity > 0.0f)
 	{
 		albedo.a = 1.0f;

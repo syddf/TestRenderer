@@ -13,23 +13,22 @@ struct ComputeNodeDesc
 	Vec3 Invocation;
 };
 
-class ComputeNode
+class VulkanComputeNode
 {
 public:
-	ComputeNode(ComputeNodeDesc desc);
-	~ComputeNode();
+	VulkanComputeNode(ComputeNodeDesc desc);
+	~VulkanComputeNode();
 
 private:
 	void CreateComputePipeline(const ComputeNodeDesc& desc);
-	void GenerateCommandBuffer();
-	VkCommandBuffer RecordCommandBuffer(int frameIndex);
+
+public:
+	void RecordCommandBuffer(VkCommandBuffer& commandBuffer, int frameIndex);
 
 private:
 	VkPipelineLayout mPipelineLayout;
 	VkPipeline mComputePipeline;
 	VulkanMaterial* mMaterial;
 	World* mWorld;
-	std::vector<VkCommandBuffer> mCommandBuffer;
-	std::vector<bool> mDirty;
 	Vec3 mInvocation;
 };

@@ -43,6 +43,7 @@ void VulkanImage::CreateImage(ImageDesc desc)
 	imageCreateInfo.extent.height = desc.Height;
 	imageCreateInfo.extent.depth = desc.Depth;
 	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageCreateInfo.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 	desc.MipLevels = GetVKFormatSize(imageCreateInfo.format) == 1 ? 1 : desc.MipLevels;
 	imageCreateInfo.mipLevels = desc.MipLevels;
 	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -115,6 +116,7 @@ void VulkanImage::CreateImage(ImageDesc desc)
 	viewDesc.MipLevelCount = desc.MipLevels;
 	viewDesc.ImageHandleAddr = reinterpret_cast<char*>(&mImage);
 	mImageView = std::make_shared<VulkanImageView>(viewDesc);
+	mImageViewDesc = viewDesc;
 
 	VkSamplerCreateInfo samplerInfo = {};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -304,6 +306,15 @@ void VulkanImage::GenerateMipMap(UInt32 Width, UInt32 Height, UInt32 MipLevels)
 	gGraphicsCommonCommandBufferPool->EndSingleTimeCommandBuffer(genMipMapCommand);
 }
 
+void VulkanImage::AddImageView(std::string formatName)
+{
+	if (mOtherFormatImageViewMap.find(formatName) == mOtherFormatImageViewMap.end())
+	{
+		mImageViewDesc.Format = ResourceCreator::GetInnerImageDataFormat(formatName);
+		mOtherFormatImageViewMap[formatName] = std::make_shared<VulkanImageView>(mImageViewDesc);
+	}
+}
+
 char* VulkanImage::GetGPUImageHandleAddress()
 {
 	return reinterpret_cast<char*>(&mImage);
@@ -312,6 +323,12 @@ char* VulkanImage::GetGPUImageHandleAddress()
 char * VulkanImage::GetGPUImageViewHandleAddress()
 {
 	return mImageView->GetGPUImageViewHandleAddress();
+}
+
+char * VulkanImage::GetGPUImageViewHandleAddress(std::string formatName)
+{
+	assert(mOtherFormatImageViewMap.find(formatName) != mOtherFormatImageViewMap.end());
+	return mOtherFormatImageViewMap[formatName]->GetGPUImageViewHandleAddress();
 }
 
 char * VulkanImage::GetSamplerHandleAddress()

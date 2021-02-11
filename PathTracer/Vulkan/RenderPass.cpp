@@ -16,23 +16,39 @@ VulkanPipelineNode::VulkanPipelineNode(const RenderingPipelineNodeDesc & desc)
 {
 	mSignalSemaphore.resize(gSwapChainImageCount, VK_NULL_HANDLE);
 	mWaitSemaphore.resize(gSwapChainImageCount);
-	GenerateGraphicsNode(desc);
 
 	mCommandBuffer.reserve(gSwapChainImageCount);
 	for (int i = 0; i < gSwapChainImageCount; i++)
 		mCommandBuffer.push_back(gPipelineGraphicsPrimaryCommandBufferPool->AllocateCommandBuffer(true));
 
-	for (auto renderingNodeDesc : desc.RenderingNodeDescVec)
+	if (desc.BindPoint == PipelineBindPoint::BP_GRAPHICS)
 	{
-		AddRenderingNodes(renderingNodeDesc);
+		GenerateGraphicsNode(desc);
+		for (auto renderingNodeDesc : desc.RenderingNodeDescVec)
+		{
+			AddRenderingNodes(renderingNodeDesc);
+		}
+		mIsComputeNode = false;
 	}
+	else if (desc.BindPoint == PipelineBindPoint::BP_COMPUTE)
+	{
+		for (auto computeNodeDesc : desc.ComputeNodeDescVec)
+		{
+			AddComputeNodes(computeNodeDesc);
+		}
+		mIsComputeNode = true;
+	}
+
 }
 
 VulkanPipelineNode::~VulkanPipelineNode()
 {
-	for(auto frameBuffer : mFrameBuffer)
-		vkDestroyFramebuffer(gVulkanDevice, frameBuffer, nullptr);
-	vkDestroyRenderPass(gVulkanDevice, mVKRenderPass, nullptr);
+	if (!mIsComputeNode)
+	{
+		for (auto frameBuffer : mFrameBuffer)
+			vkDestroyFramebuffer(gVulkanDevice, frameBuffer, nullptr);
+		vkDestroyRenderPass(gVulkanDevice, mVKRenderPass, nullptr);
+	}
 	for (auto signalSemaphore : mSignalSemaphore)
 	{
 		if (signalSemaphore != VK_NULL_HANDLE)
@@ -210,31 +226,48 @@ void VulkanPipelineNode::AddRenderingNodes(RenderingNodeDesc desc)
 	}
 }
 
+void VulkanPipelineNode::AddComputeNodes(ComputeNodeDesc desc)
+{
+	mComputeNodes.push_back(std::make_shared<VulkanComputeNode>(desc));
+}
+
 VkCommandBuffer& VulkanPipelineNode::RecordCommandBuffer(int frameIndex)
 {
-	VkRenderPassBeginInfo renderPassBeginInfo = {};
-	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassBeginInfo.framebuffer = mFrameBuffer[frameIndex];
-	renderPassBeginInfo.renderPass = mVKRenderPass;
-	renderPassBeginInfo.clearValueCount = mClearValue.size();
-	renderPassBeginInfo.pClearValues = mClearValue.data();
-	renderPassBeginInfo.renderArea.offset = {0, 0};
-	renderPassBeginInfo.renderArea.extent = {gScreenWidth, gScreenHeight};
-	
 	auto& commandBuffer = mCommandBuffer[frameIndex];
 	gPipelineGraphicsPrimaryCommandBufferPool->BeginCommandBuffer(commandBuffer);
 
-	VkSubpassContents subpassContents = mRenderingNodes.empty() ? VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE : VkSubpassContents::VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS;
-	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, subpassContents);
-	std::vector<VkCommandBuffer> childCommand;
-	childCommand.reserve(mRenderingNodes.size());
-	for (int i = 0; i < mRenderingNodes.size(); i++)
-		childCommand.push_back(mRenderingNodes[i]->RecordCommandBuffer(frameIndex, renderPassBeginInfo));
-	if (childCommand.size())
+	if (!mRenderingNodes.empty())
 	{
-		vkCmdExecuteCommands(commandBuffer, childCommand.size(), childCommand.data());
+		VkRenderPassBeginInfo renderPassBeginInfo = {};
+		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.framebuffer = mFrameBuffer[frameIndex];
+		renderPassBeginInfo.renderPass = mVKRenderPass;
+		renderPassBeginInfo.clearValueCount = mClearValue.size();
+		renderPassBeginInfo.pClearValues = mClearValue.data();
+		renderPassBeginInfo.renderArea.offset = { 0, 0 };
+		renderPassBeginInfo.renderArea.extent = { gScreenWidth, gScreenHeight };
+		VkSubpassContents subpassContents = mRenderingNodes.empty() ? VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE : VkSubpassContents::VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS;
+
+		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, subpassContents);
+		std::vector<VkCommandBuffer> childCommand;
+		childCommand.reserve(mRenderingNodes.size());
+		for (int i = 0; i < mRenderingNodes.size(); i++)
+			childCommand.push_back(mRenderingNodes[i]->RecordCommandBuffer(frameIndex, renderPassBeginInfo));
+		if (childCommand.size())
+		{
+			vkCmdExecuteCommands(commandBuffer, childCommand.size(), childCommand.data());
+		}
+		vkCmdEndRenderPass(commandBuffer);
 	}
-	vkCmdEndRenderPass(commandBuffer);
+
+	if (!mComputeNodes.empty())
+	{
+		for (auto& computeNode : mComputeNodes)
+		{
+			computeNode->RecordCommandBuffer(commandBuffer, frameIndex);
+		}
+	}
+
 	gPipelineGraphicsPrimaryCommandBufferPool->EndCommandBuffer(commandBuffer);
 	return mCommandBuffer[frameIndex];
 }

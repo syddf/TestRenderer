@@ -18,7 +18,7 @@ public:
 	static IBuffer::BufferPtr CreateStagingBuffer(char* bufferData, UInt32 bufferSize);
 	static IBuffer::BufferPtr CreateUniformBuffer(UInt32 bufferSize);
 	static IImage::ImagePtr CreateImageFromFile(std::string imageFile);
-	static IImage::ImagePtr CreateInnerImage(ImageDesc imageDesc, std::string imageName);
+	static IImage::ImagePtr CreateInnerImage(ImageDesc imageDesc, std::string imageName, int frameIndex);
 	static IBuffer::BufferPtr CreateVertexBuffer(char* bufferData, UInt32 bufferSize);
 	static IBuffer::BufferPtr CreateIndexBuffer(char* bufferData, UInt32 bufferSize);
 	static VulkanMaterial::MaterialPtr CreateMaterial(std::string materialName, std::string computeShader);
@@ -49,6 +49,8 @@ public:
 			return TextureFormat::TF_R32UInt;
 		else if (format == "R8")
 			return TextureFormat::TF_R8Unorm;
+		else if (format == "Rgba8")
+			return TextureFormat::TF_R8G8B8A8Unorm;
 		return TextureFormat::TF_UNDEFINED;
 	}
 	static void DestroyCachingResource();

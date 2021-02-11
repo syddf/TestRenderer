@@ -35,13 +35,6 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	
 	VulkanSceneData * scene = new VulkanSceneData("D:\\Resource\\res\\sponza.data");
 	ResourceCreator::CreateDepthStencilAttachment("DepthStencilAttachment", gScreenWidth, gScreenHeight);
-	
-	ComputeNodeDesc cnd = {};
-	cnd.Invocation = Vec3(256, 256, 256);
-	cnd.MaterialAddr = (char*)(computeMaterial.get());
-	cnd.World = scene->GetWorldData().get();
-
-	ComputeNode* node = new ComputeNode(cnd);
 
 	RenderingPipelineNodeDesc voxelizationPass = {};
 	voxelizationPass.NodeName = "voxelization";
@@ -57,7 +50,6 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	renderVoxelPass.FrameBufferDesc.Height = gScreenHeight;
 	renderVoxelPass.FrameBufferDesc.AttachmentName.push_back("SwapChainImage");
 	renderVoxelPass.FrameBufferDesc.AttachmentName.push_back("DepthStencilAttachment");
-
 	AttachmentDesc attachDesc;
 	attachDesc.Usage = TextureUsageBits::TU_COLOR_ATTACHMENT;
 	attachDesc.LoadOp = AttachmentOperator::AO_CLEAR;
@@ -74,14 +66,26 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	voxelNode.MaterialAddr = (char*)(tmaterial.get());
 	voxelNode.World = scene->GetWorldData().get();
 	renderVoxelPass.RenderingNodeDescVec.push_back(voxelNode);
-	scene->AddUpdateMaterial("test2");
-
 	renderVoxelPass.DependingNodeIndex.push_back(0);
-	
+
+	ComputeNodeDesc cnd = {};
+	cnd.Invocation = Vec3(256, 256, 256);
+	cnd.MaterialAddr = (char*)(computeMaterial.get());
+	cnd.World = scene->GetWorldData().get();
+	RenderingPipelineNodeDesc clearVoxelPass = {};
+	clearVoxelPass.NodeName = "clearVoxel";
+	clearVoxelPass.BindPoint = PipelineBindPoint::BP_COMPUTE;
+	clearVoxelPass.AttachToWindowNode = false;
+	clearVoxelPass.ComputeNodeDescVec.push_back(cnd);
+	clearVoxelPass.DependingNodeIndex.push_back(1);
+
+	scene->AddUpdateMaterial("test2");
+	scene->AddUpdateMaterial("test4");
 
 	std::vector<RenderingPipelineNodeDesc> pipelineNodesVec;
 	pipelineNodesVec.push_back(voxelizationPass);
 	pipelineNodesVec.push_back(renderVoxelPass);
+	pipelineNodesVec.push_back(clearVoxelPass);
 
 	auto vulkanPipeline = new VulkanRenderingPipeline();
 	vulkanPipeline->GenerateRenderingGraph(pipelineNodesVec);

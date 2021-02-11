@@ -7,21 +7,20 @@ extern UInt32 gScreenHeight;
 extern UInt32 gSwapChainImageCount;
 extern VulkanCommandBufferPool* gPipelineGraphicsPrimaryCommandBufferPool;
 
-ComputeNode::ComputeNode(ComputeNodeDesc desc)
+VulkanComputeNode::VulkanComputeNode(ComputeNodeDesc desc)
 {
 	mMaterial = reinterpret_cast<VulkanMaterial*>(desc.MaterialAddr);
 	mWorld = desc.World;
 	mInvocation = desc.Invocation;
 
 	CreateComputePipeline(desc);
-	GenerateCommandBuffer();
 }
 
-ComputeNode::~ComputeNode()
+VulkanComputeNode::~VulkanComputeNode()
 {
 }
 
-void ComputeNode::CreateComputePipeline(const ComputeNodeDesc& desc)
+void VulkanComputeNode::CreateComputePipeline(const ComputeNodeDesc& desc)
 {
 	auto& shaderStageInfo = mMaterial->GetShaderStageInfo();
 	assert(shaderStageInfo.size() == 1);
@@ -44,25 +43,12 @@ void ComputeNode::CreateComputePipeline(const ComputeNodeDesc& desc)
 	VKFUNC(vkCreateComputePipelines(gVulkanDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &mComputePipeline), "Create Pipeline Failed.");
 }
 
-void ComputeNode::GenerateCommandBuffer()
+void VulkanComputeNode::RecordCommandBuffer(VkCommandBuffer& commandBuffer, int frameIndex)
 {
-	mCommandBuffer.reserve(gSwapChainImageCount);
-	for (int i = 0; i < gSwapChainImageCount; i++)
-		mCommandBuffer.push_back(gPipelineGraphicsPrimaryCommandBufferPool->AllocateCommandBuffer(false));
-	mDirty.resize(3, true);
-}
-
-VkCommandBuffer ComputeNode::RecordCommandBuffer(int frameIndex)
-{
-	auto commandBuffer = mCommandBuffer[frameIndex];
-	if (mDirty[frameIndex] == false)
-		return commandBuffer;
-
 	Vec3 localSize = mMaterial->GetComputeLocalSize();
 	int groupSizeX = std::ceilf(mInvocation.x / localSize.x);
 	int groupSizeY = std::ceilf(mInvocation.y / localSize.y);
 	int groupSizeZ = std::ceilf(mInvocation.z / localSize.z);
-	gPipelineGraphicsPrimaryCommandBufferPool->BeginCommandBuffer(commandBuffer);
 	int descCount;
 	std::vector<VkDescriptorSet> submitDescSetVec =mMaterial->GetDescriptorSet(frameIndex, descCount, true);
 	VkDescriptorSet worldSet = mWorld->GetWorldParamsSet(mMaterial, frameIndex);
@@ -71,6 +57,4 @@ VkCommandBuffer ComputeNode::RecordCommandBuffer(int frameIndex)
 	vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE, mPipelineLayout, 0, submitDescSetVec.size(), submitDescSetVec.data(), 0, nullptr);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, mComputePipeline);
 	vkCmdDispatch(commandBuffer, groupSizeX, groupSizeY, groupSizeZ);
-	gPipelineGraphicsPrimaryCommandBufferPool->EndCommandBuffer(commandBuffer);
-	return commandBuffer;
 }

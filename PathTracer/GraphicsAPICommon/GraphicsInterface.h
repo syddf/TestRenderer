@@ -36,7 +36,9 @@ public:
 	virtual void CreateImage(ImageDesc desc) = 0;
 	virtual char* GetGPUImageHandleAddress() = 0;
 	virtual char* GetGPUImageViewHandleAddress() = 0;
+	virtual char* GetGPUImageViewHandleAddress(std::string formatName) = 0;
 	virtual char* GetSamplerHandleAddress() = 0;
+	virtual void AddImageView(std::string formatName) = 0;
 };
 
 class IImageView
