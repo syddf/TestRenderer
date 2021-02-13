@@ -28,7 +28,8 @@ VulkanPresentEngine* presentEngine;
 
 void test(VkQueue graphicsQueue, VulkanWindow* window)
 {
-	auto computeMaterial = ResourceCreator::CreateMaterial("test4", "D:\\OfflineRenderer\\Asset\\clearVoxelMapComp.data");
+	auto anistroMaterial = ResourceCreator::CreateMaterial("test4", "D:\\OfflineRenderer\\Asset\\anisoMipMapVolumeComp.data");
+	auto computeMaterial = ResourceCreator::CreateMaterial("test5", "D:\\OfflineRenderer\\Asset\\clearVoxelMapComp.data");
 	//auto ttmaterial = ResourceCreator::CreateMaterial("test3", "D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data");
 	auto tmaterial = ResourceCreator::CreateMaterial("test2", MaterialMode::Normal, "D:\\OfflineRenderer\\Asset\\renderVoxelVert.data", "D:\\OfflineRenderer\\Asset\\renderVoxelFrag.data", "D:\\OfflineRenderer\\Asset\\renderVoxelGeom.data");
 	//auto material = ResourceCreator::CreateMaterial("test1", "D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data");
@@ -116,7 +117,9 @@ void compileShader()
 		"renderVoxel.vert",
 		"renderVoxel.frag",
 		"renderVoxel.geom",
-		"clearVoxelMap.comp"
+		"clearVoxelMap.comp",
+		"averageVoxelMap.comp",
+		"anisoMipMapVolume.comp"
 	};
 	std::vector<std::string> newShaderPathVec;
 	char buffer[MAXPATH];

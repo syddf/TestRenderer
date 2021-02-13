@@ -101,7 +101,7 @@ void World::Update(int frameIndex)
 	static float theta = 0.0f;
 	Vec3 point = Vec3(300.0f, 200.0f, 0.0f);
 	mMainCamera.SetParams(((float)gScreenWidth) / gScreenHeight, 0.1f, 10000.0f, glm::radians(60.0f), Vec3(cos(theta), 0.0f, sin(theta)), point, Vec3(0, -1, 0));
-	//theta += 0.01f;
+	theta += 0.01f;
 
 	float voxelDimension = mWorldParams.VoxelDimension;
 	
@@ -179,6 +179,10 @@ void World::Update(int frameIndex)
 
 void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 {
+	static const std::vector<std::string> sNeedMipInnerTextureName = 
+	{
+		"voxelMipMapAlbedo_IN"
+	};
 	auto matName = material->GetShaderGroupName();
 	if (mWorldMaterialParams.find(matName) == mWorldMaterialParams.end())
 	{
@@ -211,6 +215,13 @@ void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 				desc.Height = size;
 				desc.Depth = size;
 				desc.ImageData = nullptr;
+				for (auto& innerMipStr : sNeedMipInnerTextureName)
+				{
+					if (innerMipStr.find(image.first) != innerMipStr.npos)
+					{
+						desc.MipLevels = static_cast<UInt32>(std::floor(std::log2(std::max(desc.Width, desc.Height) + 1)));
+					}
+				}
 
 				for (int i = 0; i < gSwapChainImageCount; i++)
 				{
@@ -234,16 +245,31 @@ void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 					auto pImage = materialParams.InnerImage[i][image.second.Binding];
 					VkDescriptorImageInfo imageInfo = {};
 					imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-					imageInfo.imageView = *((VkImageView*)pImage->GetGPUImageViewHandleAddress(image.second.Format));
-					imageInfo.sampler = *((VkSampler*)pImage->GetSamplerHandleAddress());
-					descImageInfoVec.push_back(imageInfo);
+					if (image.second.CombinedSampler)
+					{
+						imageInfo.sampler = *((VkSampler*)pImage->GetSamplerHandleAddress());
+						imageInfo.imageView = *((VkImageView*)pImage->GetGPUImageViewHandleAddress());
+					}					
+					else
+					{
+						imageInfo.sampler = VK_NULL_HANDLE;
+						imageInfo.imageView = *((VkImageView*)pImage->GetGPUImageViewHandleAddress(image.second.Format, 0));
+					}
 
+					descImageInfoVec.push_back(imageInfo);
 					VkWriteDescriptorSet descriptorWrite = {};
 					descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 					descriptorWrite.dstSet = materialParams.DescSet[i];
 					descriptorWrite.dstBinding = image.second.Binding;
-					descriptorWrite.dstArrayElement = 0;
-					descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+					descriptorWrite.dstArrayElement = image.second.ArrayIndex;
+					if (image.second.CombinedSampler)
+					{
+						descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;;
+					}
+					else
+					{
+						descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+					}
 					descriptorWrite.descriptorCount = 1;
 					descriptorWrite.pBufferInfo = nullptr;
 					descriptorWrite.pImageInfo = &descImageInfoVec.back();

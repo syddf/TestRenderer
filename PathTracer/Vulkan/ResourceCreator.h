@@ -51,6 +51,8 @@ public:
 			return TextureFormat::TF_R8Unorm;
 		else if (format == "Rgba8")
 			return TextureFormat::TF_R8G8B8A8Unorm;
+		else if (format == "Rg16ui")
+			return TextureFormat::TF_RG16UInt;
 		return TextureFormat::TF_UNDEFINED;
 	}
 	static void DestroyCachingResource();

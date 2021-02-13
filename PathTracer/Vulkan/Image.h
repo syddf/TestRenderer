@@ -17,8 +17,9 @@ public:
 	void AddImageView(std::string formatName);
 	char* GetGPUImageHandleAddress();
 	char* GetGPUImageViewHandleAddress();
-	char* GetGPUImageViewHandleAddress(std::string formatName);
+	char* GetGPUImageViewHandleAddress(std::string formatName, int mipMapLevel);
 	char* GetSamplerHandleAddress();
+	int GetMipMapLevelCount();
 
 private:
 	VkImage mImage;
@@ -27,5 +28,6 @@ private:
 	VkImageLayout mImageLayout;
 	IImageView::ImageViewPtr mImageView;
 	ImageViewDesc mImageViewDesc;
-	std::map<std::string, IImageView::ImageViewPtr> mOtherFormatImageViewMap;
+	std::map<std::string, std::vector<IImageView::ImageViewPtr>> mFormatImageViewMap;
+	std::vector<IImageView::ImageViewPtr> mStorageImageView;
 };

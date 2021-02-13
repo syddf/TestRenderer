@@ -120,7 +120,9 @@ void VulkanMaterial::MergeShaderParams()
 					{
 						auto numberStart = textureName.find('[');
 						auto numberEnd = textureName.find(']');
-						int numberCount = numberEnd - numberStart;
+						int numberCount = numberEnd - numberStart - 1;
+						if (numberCount <= 0)
+							return 0;
 						std::string numberInd = textureName.substr(numberStart + 1, numberCount);
 						int res = 0;
 						for (int i = 0; i < numberCount; i++)
@@ -138,10 +140,15 @@ void VulkanMaterial::MergeShaderParams()
 					imageParam.Attachment = false;
 					imageParam.Format = param.Format.substr(dimensionStrEndPos + 1);
 					imageParam.InnerImage = false;					
+					imageParam.CombinedSampler = true;
 					auto nameLength = param.Name.length();
-					if (param.Name[nameLength - 3] == '_' && param.Name[nameLength - 2] == 'I' && param.Name[nameLength - 1] == 'N')
+					if (param.Name.find("_IN") != param.Name.npos)
 					{
 						imageParam.InnerImage = true;
+					}
+					if (param.Format != "")
+					{
+						imageParam.CombinedSampler = false;
 					}
 					mParams.ImageParams[param.Name] = imageParam;
 
@@ -333,12 +340,15 @@ void VulkanMaterial::CreatePushConstantRange()
 				range.size = 4;
 			else if (pushConstantInfo.format == "int")
 				range.size = 4;
+			mPushConstantRange.push_back(range);
 		}
-		mPushConstantRange.push_back(range);
 	};
 
 	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.VertexShader), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
+	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.GeometryShader), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT);
 	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.FragmentShader), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.ComputeShader), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
 }
 
 void VulkanMaterial::CreateShaderStageInfo()

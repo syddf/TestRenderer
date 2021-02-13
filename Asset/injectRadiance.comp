@@ -1,0 +1,143 @@
+#version 450
+#extension GL_ARB_shader_image_load_store : require
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+struct Light
+{
+    vec3 diffuse;
+    vec3 specular;
+    vec3 position;
+    vec3 direction;
+};
+
+layout(set = 0, binding = 0) uniform EmptyMaterialParams
+{
+	float padding;
+} materialParams;
+
+layout(set = 1, binding = 0) uniform EmptyObjectParams
+{
+	float padding;
+} objectParams;
+
+layout(set = 2, binding = 0) uniform sampler3D voxelAlbedo_IN;
+layout(set = 2, binding = 1, rgba8) uniform image3D voxelNormal_IN;
+layout(set = 2, binding = 2, rgba8) uniform readonly image3D voxelEmission_IN;
+layout(set = 2, binding = 3, rgba8) uniform writeonly image3D voxelRadiance_IN;
+
+layout(set = 2, binding = 4) uniform WorldObject 
+{
+    vec3 uCameraPosition;
+    Light lights[4];
+    int lightCount;
+} woj;
+
+layout(set = 2, binding = 5) uniform VoxelParams
+{
+    vec3 worldMinPoint;
+    float voxelSize;
+    float voxelDimension;
+} params;
+
+const float PI = 3.14159265f;
+const float EPSILON = 1e-30;
+const float SQRT_3 = 1.73205080f;
+
+vec3 VoxelToWorld(ivec3 pos)
+{
+    vec3 result = vec3(pos);
+    result *= params.voxelSize;
+    return result + params.worldMinPoint;
+}
+
+vec3 WorldToVoxel(vec3 pos)
+{
+    vec3 voxelPos = pos - params.worldMinPoint;
+    float voxelScale = 1.0f / (params.voxelSize * params.voxelDimension);
+    return voxelPos * voxelScale;
+}
+
+vec3 DecodeNormal(vec3 normal)
+{
+    return normal * 2.0f - vec3(1.0f);
+}
+
+vec3 BRDF(Light light, vec3 normal, vec3 albedo)
+{
+    float nDotL = 0.0f;
+    nDotL = max(dot(normal, light.direction), 0.0f);
+    return light.diffuse * albedo * nDotL;
+}
+
+float TraceShadow(vec3 position, vec3 direction, float maxTracingDistance) 
+{
+    float k = 0.25f;
+    float voxelTexSize = 1.0f / params.voxelDimension;
+    float dst = voxelTexSize * 2.0f;
+    vec3 samplePos = direction * dst + position;
+    float visibility = 0.0f;
+    float traceSample = 0.0f;
+    while (visibility <= 1.0f && dst <= maxTracingDistance) 
+    {
+        if (samplePos.x < 0.0f || samplePos.y < 0.0f || samplePos.z < 0.0f
+            || samplePos.x > 1.0f || samplePos.y > 1.0f || samplePos.z > 1.0f) 
+        { 
+            break; 
+        }
+        traceSample = ceil(texture(voxelAlbedo_IN, samplePos).a) * k;
+        if(traceSample > 1.0f - EPSILON) { return 0.0f; }
+        visibility += (1.0f - visibility) * traceSample / dst;
+        dst += voxelTexSize;
+        samplePos = direction * dst + position;
+    }
+    return 1.0f - visibility;
+}
+
+vec4 CalculateDirectional(Light light, vec3 normal, vec3 position, vec3 albedo)
+{
+    float visibility = 1.0f;
+    vec3 voxelPos = WorldToVoxel(position);
+    visibility = TraceShadow(voxelPos, light.direction, 1.0f);
+    if(visibility == 0.0f) return vec4(0.0f); 
+    return vec4(BRDF(light, normal, albedo) * visibility, visibility);
+}
+
+vec4 CalculateDirectLighting(vec3 position, vec3 normal, vec3 albedo)
+{
+    normal = normalize(normal);
+    float voxelScale = 1.0f / (params.voxelSize * params.voxelDimension);
+    position = position + normal * voxelScale * 0.5f;
+    vec4 directLighting = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+    vec4 current =  vec4(0.0f); 
+    int count = 0;
+    for(int i = 0; i < woj.lightCount; i ++)
+    {
+        current = CalculateDirectional(woj.lights[i], normal, position, albedo);
+        directLighting.rgb += current.rgb;
+        directLighting.a += current.a; 
+        count++;
+    }
+    if(count > 0) { directLighting.a /= count; }
+    return directLighting;
+}
+
+void main()
+{	
+    if(gl_GlobalInvocationID.x >= params.voxelDimension || 
+       gl_GlobalInvocationID.y >= params.voxelDimension ||
+       gl_GlobalInvocationID.z >= params.voxelDimension) 
+        return;
+    ivec3 writePos = ivec3(gl_GlobalInvocationID);
+    vec4 albedo = texelFetch(voxelAlbedo_IN, writePos, 0);
+    if(albedo.a < EPSILON) return;
+    vec3 baseNormal = imageLoad(voxelNormal_IN, writePos).xyz;
+    vec3 normal = DecodeNormal(baseNormal);
+    if(any(greaterThan(albedo.rgb, vec3(0.0f))))
+    {
+        vec3 wsPosition = VoxelToWorld(writePos);
+        albedo = CalculateDirectLighting(wsPosition, normal, albedo.rgb);
+    }
+    imageStore(voxelNormal_IN, writePos, vec4(baseNormal, albedo.a));
+    albedo.a = 1.0f;
+    imageStore(voxelRadiance_IN, writePos, albedo);
+}

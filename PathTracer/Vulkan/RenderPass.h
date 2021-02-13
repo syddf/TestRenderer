@@ -67,7 +67,7 @@ public:
 	std::vector<VkPipelineStageFlags>& GetWaitFlags() 
 	{ 
 		if(!mIsComputeNode)
-			mWaitFlags.resize(mWaitSemaphore[0].size(), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+			mWaitFlags.resize(mWaitSemaphore[0].size(), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 		else
 			mWaitFlags.resize(mWaitSemaphore[0].size(), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 		return mWaitFlags; 

@@ -40,6 +40,8 @@ static VkFormat GetVKTextureFormat(TextureFormat format)
 			return VkFormat::VK_FORMAT_R8_UINT;
 		case TextureFormat::TF_R32UInt:
 			return VkFormat::VK_FORMAT_R32_UINT;
+		case TextureFormat::TF_RG16UInt:
+			return VkFormat::VK_FORMAT_R16G16_UINT;
 	}
 	return VkFormat::VK_FORMAT_UNDEFINED;
 }

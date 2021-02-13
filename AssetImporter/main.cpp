@@ -15,19 +15,21 @@ int main(int argc, char** argv)
 //	std::string srcPath = path + "/../../Asset/Src/red.png";
 //	std::string dstPath = path + "/../../Asset/Dst/red.data";
 */
-	/*
+	
 	char buffer[256];
 	getcwd(buffer, 256);
 	std::string path = buffer;
-	std::string srcPath = path + "/../../Asset/clearVoxelMapComp.spv";
-	std::string dstPath = path + "/../../Asset/clearVoxelMapComp.data";
+	std::string srcPath = path + "/../../Asset/anisoMipMapVolumeComp.spv";
+	std::string dstPath = path + "/../../Asset/anisoMipMapVolumeComp.data";
 	AssetImporter imp;
 	imp.ImportAsset(srcPath, dstPath);
-	*/
+	
+	/*
 	assert(argc == 3);
 	std::string srcFile = argv[1];
 	std::string dstFile = argv[2];
 	AssetImporter importer;
 	importer.ImportAsset(srcFile, dstFile);
+	*/
 	return 0;
 }

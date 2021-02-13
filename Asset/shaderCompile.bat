@@ -5,4 +5,6 @@ D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRender
 D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxel.frag -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxelFrag.spv
 D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxel.geom -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\renderVoxelGeom.spv
 D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\clearVoxelMap.comp -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\clearVoxelMapComp.spv
+D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\averageVoxelMap.comp -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\averageVoxelMapComp.spv
+D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\glslc.exe D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\anisoMipMapVolume.comp -o D:\OfflineRenderer\build_x64\PathTracer\.\..\..\Asset\anisoMipMapVolumeComp.spv
 pause

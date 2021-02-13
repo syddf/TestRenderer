@@ -24,7 +24,8 @@ enum TextureFormat
 	TF_R32G32B32A32SFloat,
 	TF_D24US8,
 	TF_R8UInt,
-	TF_R32UInt
+	TF_R32UInt,
+	TF_RG16UInt
 };
 
 enum AttachmentOperator
@@ -158,13 +159,15 @@ struct ConstantBufferParam
 struct ImageParam
 {
 	bool Attachment;
+	bool InnerImage;
+	bool CombinedSampler;
 	TextureDimension ImageDimension;
 	int Set;
 	int Binding;
 	int ArrayIndex;
-	bool InnerImage;
 	std::string Format;
 	std::string Value;
+
 };
 
 struct MaterialParams

@@ -438,7 +438,7 @@ void SPIRVImporter::ExportAllBlock(ImportAsset* ImportAsset)
 		else if (mSPIRVGlobalState.OpType[typeId].typeEnum == SPIRV_TypeEnum::TE_Array)
 		{
 			auto parentType = mSPIRVGlobalState.OpType[mSPIRVGlobalState.OpType[typeId].parentType];
-			if (parentType.typeEnum != SPIRV_TypeEnum::TE_SamplerImage)
+			if (parentType.typeEnum != SPIRV_TypeEnum::TE_SamplerImage && parentType.typeEnum != SPIRV_TypeEnum::TE_Image)
 			{
 				throw "Not allowed array format.";
 			}
@@ -542,8 +542,7 @@ void SPIRVImporter::ExportArrayShaderParameters(int structId, int offset, std::v
 		{
 			std::string arraySuffix = std::string("[") + std::to_string(i) + std::string("]");
 			std::string name = namePrefix + arraySuffix;
-			int imageTypeId = mSPIRVGlobalState.OpType[parentId].parentType;
-			ExportImageShaderParameters(imageTypeId, baseOffset, paramsVec, name, false);
+			ExportImageShaderParameters(parentId, baseOffset, paramsVec, name, false);
 		}
 	}
 	else 
@@ -576,7 +575,8 @@ void SPIRVImporter::ExportImageShaderParameters(int structId, int offset, std::v
 		{ 0, "Unknown"},
 		{ 4, "Rgba8"},
 		{ 15, "R8"},
-		{ 33, "R32ui"}
+		{ 33, "R32ui"},
+		{ 36, "Rg16ui"}
 	};
 	auto imageType = mSPIRVGlobalState.OpType[structId];	
 	ShaderParameter newParameter;

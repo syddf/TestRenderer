@@ -114,7 +114,6 @@ void VulkanDevice::InitializeInstance()
 				break;
 			}
 		}
-
 		if (enableValidationLayers)
 		{
 			instanceCreateInfo.enabledLayerCount = validationLayers.size();
