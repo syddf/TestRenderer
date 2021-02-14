@@ -203,14 +203,20 @@ void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 			{
 				int size = 0;
 				if (image.first.find("voxel") != image.first.npos || image.first.find("Voxel") != image.first.npos)
+				{
 					size = mWorldParams.VoxelDimension;
+					if (image.first.find("voxelMipMapAlbedo_IN") != image.first.npos)
+					{
+						size = mWorldParams.VoxelDimension >> 1;
+					}
+				}
 				ImageDesc desc = {};
 				desc.ArrayLayers = 1;
 				desc.Dimension = image.second.ImageDimension;
 				desc.Format = ResourceCreator::GetInnerImageDataFormat(image.second.Format);
 				desc.GenerateMipMap = false;
 				desc.MipLevels = 1;
-				desc.Usage = TextureUsageBits::TU_STORAGE;
+				desc.Usage = TextureUsageBits::TU_STORAGE | TextureUsageBits::TU_SHADER_RESOURCE;
 				desc.Width = size;
 				desc.Height = size;
 				desc.Depth = size;

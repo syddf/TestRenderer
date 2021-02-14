@@ -15,7 +15,7 @@ layout(set = 1, binding = 1) uniform ObjectParams
    float staticVoxelFlag;
 } voxelParams;
 
-layout(set = 2, binding = 0, rgba16f) uniform image3D voxelAlbedo_IN;
+layout(set = 2, binding = 0, r32ui) uniform uimage3D voxelAlbedo_IN;
 layout(set = 2, binding = 1, r32ui) uniform uimage3D voxelNormal_IN;
 layout(set = 2, binding = 2, r32ui) uniform uimage3D voxelEmission_IN;
 layout(set = 2, binding = 3, r8) uniform image3D staticVoxelFlag_IN;
@@ -61,7 +61,21 @@ void imageAtomicRGBA8AvgEmission(ivec3 coords, vec4 value)
 
 void imageAtomicRGBA8AvgAlbedo(ivec3 coords, vec4 value)
 {
-	imageAtomicAdd(voxelAlbedo_IN, coords, value);
+    value.rgb *= 255.0;
+    uint newVal = convVec4ToRGBA8(value);
+    uint prevStoredVal = 1;
+    uint curStoredVal;
+
+    while((curStoredVal = imageAtomicCompSwap(voxelAlbedo_IN, coords, prevStoredVal, newVal)) 
+            != prevStoredVal)
+    {
+        prevStoredVal = curStoredVal;
+        vec4 rval = convRGBA8ToVec4(curStoredVal);
+        rval.rgb = (rval.rgb * rval.a); // Denormalize
+        vec4 curValF = rval + value;    // Add
+        curValF.rgb /= curValF.a;       // Renormalize
+        newVal = convVec4ToRGBA8(curValF);
+    }
 }
 
 void imageAtomicRGBA8AvgNormal(ivec3 coords, vec4 value)

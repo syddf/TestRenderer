@@ -101,7 +101,7 @@ void VulkanImage::CreateImage(ImageDesc desc)
 		TranslateImageLayout(VkImageLayout::VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, 1);
 	}
 
-	if (desc.Usage == TextureUsageBits::TU_STORAGE)
+	if (desc.Usage & TextureUsageBits::TU_STORAGE )
 	{
 		TranslateImageLayout(VkImageLayout::VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	}

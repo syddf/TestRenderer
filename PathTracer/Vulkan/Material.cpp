@@ -146,7 +146,7 @@ void VulkanMaterial::MergeShaderParams()
 					{
 						imageParam.InnerImage = true;
 					}
-					if (param.Format != "")
+					if (imageParam.Format != "Unknown")
 					{
 						imageParam.CombinedSampler = false;
 					}
@@ -230,19 +230,19 @@ void VulkanMaterial::CreateVulkanDescLayout()
 					{
 						newBinding.descriptorCount = block.ParamsVec.size();
 						newBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-						mImageSamplerPoolSize.descriptorCount += newBinding.descriptorCount;
+						mImageSamplerPoolSize.descriptorCount += block.ParamsVec.size();
 						if (set == PerObjDescSetIndex)
-							mPerObjectImageSamplerPoolSize.descriptorCount++;
+							mPerObjectImageSamplerPoolSize.descriptorCount += block.ParamsVec.size();
 						if (set == PerCameraDescSetIndex)
-							mPerCameraImageSamplerPoolSize.descriptorCount++;
+							mPerCameraImageSamplerPoolSize.descriptorCount += block.ParamsVec.size();
 					}
 					else
 					{
 						newBinding.descriptorCount = block.ParamsVec.size();
 						newBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 						if (set == PerCameraDescSetIndex)
-							mPerCameraStorageImagePoolSize.descriptorCount++;
-						mStorageImagePoolSize.descriptorCount++;
+							mPerCameraStorageImagePoolSize.descriptorCount += block.ParamsVec.size();
+						mStorageImagePoolSize.descriptorCount += block.ParamsVec.size();
 					}
 				}
 
