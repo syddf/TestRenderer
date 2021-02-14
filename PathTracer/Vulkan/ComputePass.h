@@ -19,13 +19,13 @@ public:
 	VulkanComputeNode(ComputeNodeDesc desc);
 	~VulkanComputeNode();
 
-private:
+protected:
 	void CreateComputePipeline(const ComputeNodeDesc& desc);
 
 public:
-	void RecordCommandBuffer(VkCommandBuffer& commandBuffer, int frameIndex);
+	virtual void RecordCommandBuffer(VkCommandBuffer& commandBuffer, int frameIndex);
 
-private:
+protected:
 	VkPipelineLayout mPipelineLayout;
 	VkPipeline mComputePipeline;
 	VulkanMaterial* mMaterial;
