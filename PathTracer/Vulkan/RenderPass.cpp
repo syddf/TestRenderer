@@ -16,6 +16,8 @@ VulkanPipelineNode::VulkanPipelineNode(const RenderingPipelineNodeDesc & desc)
 {
 	mSignalSemaphore.resize(gSwapChainImageCount, VK_NULL_HANDLE);
 	mWaitSemaphore.resize(gSwapChainImageCount);
+	mAttachmentWidth = desc.FrameBufferDesc.Width == 0 ? gScreenWidth : desc.FrameBufferDesc.Width;
+	mAttachmentHeight = desc.FrameBufferDesc.Height == 0 ? gScreenHeight : desc.FrameBufferDesc.Height;
 
 	mCommandBuffer.reserve(gSwapChainImageCount);
 	for (int i = 0; i < gSwapChainImageCount; i++)
@@ -39,6 +41,7 @@ VulkanPipelineNode::VulkanPipelineNode(const RenderingPipelineNodeDesc & desc)
 		mIsComputeNode = true;
 	}
 
+	mNeedPresent = desc.AttachToWindowNode;
 }
 
 VulkanPipelineNode::~VulkanPipelineNode()
@@ -216,19 +219,22 @@ void VulkanPipelineNode::AddRenderingNodes(RenderingNodeDesc desc)
 		colorBlendStateInfo.blendConstants[1] = 0.0f;
 		colorBlendStateInfo.blendConstants[2] = 0.0f;
 		colorBlendStateInfo.blendConstants[3] = 0.0f;
-		mRenderingNodes.push_back(std::make_shared<VulkanRenderingNode>(desc, mVKRenderPass, colorBlendStateInfo));
+		mRenderingNodes.push_back(std::make_shared<VulkanRenderingNode>(desc, mVKRenderPass, colorBlendStateInfo, mAttachmentWidth, mAttachmentHeight));
 	}
 	else if (matMode == MaterialMode::NoAttachment)
 	{
 		VkPipelineColorBlendStateCreateInfo colorBlendStateInfo = {};
 		colorBlendStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		mRenderingNodes.push_back(std::make_shared<VulkanRenderingNode>(desc, mVKRenderPass, colorBlendStateInfo));
+		mRenderingNodes.push_back(std::make_shared<VulkanRenderingNode>(desc, mVKRenderPass, colorBlendStateInfo, mAttachmentWidth, mAttachmentHeight));
 	}
 }
 
 void VulkanPipelineNode::AddComputeNodes(ComputeNodeDesc desc)
 {
-	mComputeNodes.push_back(std::make_shared<VulkanComputeNode>(desc));
+	if (desc.ComputeNode == nullptr)
+		mComputeNodes.push_back(std::make_shared<VulkanComputeNode>(desc));
+	else
+		mComputeNodes.push_back(desc.ComputeNode);
 }
 
 VkCommandBuffer& VulkanPipelineNode::RecordCommandBuffer(int frameIndex)
@@ -245,7 +251,7 @@ VkCommandBuffer& VulkanPipelineNode::RecordCommandBuffer(int frameIndex)
 		renderPassBeginInfo.clearValueCount = mClearValue.size();
 		renderPassBeginInfo.pClearValues = mClearValue.data();
 		renderPassBeginInfo.renderArea.offset = { 0, 0 };
-		renderPassBeginInfo.renderArea.extent = { gScreenWidth, gScreenHeight };
+		renderPassBeginInfo.renderArea.extent = { (uint32_t)mAttachmentWidth, (uint32_t)mAttachmentHeight };
 		VkSubpassContents subpassContents = mRenderingNodes.empty() ? VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE : VkSubpassContents::VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS;
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, subpassContents);
@@ -258,6 +264,11 @@ VkCommandBuffer& VulkanPipelineNode::RecordCommandBuffer(int frameIndex)
 			vkCmdExecuteCommands(commandBuffer, childCommand.size(), childCommand.data());
 		}
 		vkCmdEndRenderPass(commandBuffer);
+
+		for (auto attach : mAttachment)
+		{
+			attach->TranslateAttachmentImage(frameIndex, mNeedPresent ? VkImageLayout::VK_IMAGE_LAYOUT_PRESENT_SRC_KHR : VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		}
 	}
 
 	if (!mComputeNodes.empty())
@@ -272,7 +283,7 @@ VkCommandBuffer& VulkanPipelineNode::RecordCommandBuffer(int frameIndex)
 	return mCommandBuffer[frameIndex];
 }
 
-void VulkanRenderingNode::CreatePipeline(RenderingNodeDesc desc, VkRenderPass renderPass, VkPipelineColorBlendStateCreateInfo blendState)
+void VulkanRenderingNode::CreatePipeline(RenderingNodeDesc desc, VkRenderPass renderPass, VkPipelineColorBlendStateCreateInfo blendState, int width, int height)
 {
 	VulkanMaterial* material = reinterpret_cast<VulkanMaterial*>(desc.MaterialAddr);
 	auto& descSetVec = material->GetSetLayouts();
@@ -293,15 +304,15 @@ void VulkanRenderingNode::CreatePipeline(RenderingNodeDesc desc, VkRenderPass re
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)gScreenWidth;
-	viewport.height = (float)gScreenHeight;
+	viewport.width = (float)width;
+	viewport.height = (float)height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	scissor.extent.width = gScreenWidth;
-	scissor.extent.height = gScreenHeight;
+	scissor.extent.width = width;
+	scissor.extent.height = height;
 
 	VkPipelineViewportStateCreateInfo viewportState = {};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -352,58 +363,66 @@ VkCommandBuffer VulkanRenderingNode::RecordCommandBuffer(int frameIndex, VkRende
 	gPipelineGraphicsSecondaryCommandBufferPool->BeginSecondaryCommandBuffer(commandBuffer, renderPassInfo);
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline);
 	
-	VulkanMaterial* mat = reinterpret_cast<VulkanMaterial*>(mMaterialAddr);
-	mat->Update(frameIndex);
-	int descCount;
-	std::vector<VkDescriptorSet> descSetVec = mat->GetDescriptorSet(frameIndex, descCount);
-	VkDescriptorSet worldSet = mWorld->GetWorldParamsSet(mat, frameIndex);
-	if (mObject.empty())
+	if (mCustomNodePtr == nullptr)
 	{
-		VkDeviceSize offsets[] = { 0 };
-		//vkCmdBindVertexBuffers(commandBuffer, 0, 1, VK_NULL_HANDLE, offsets);
-		std::vector<VkDescriptorSet> submitDescSetVec = mat->GetDescriptorSet(frameIndex, descCount, true);
-		if (worldSet != VK_NULL_HANDLE)
-			submitDescSetVec.push_back(worldSet);
-		vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, submitDescSetVec.size(), submitDescSetVec.data(), 0, nullptr);
-		vkCmdDraw(commandBuffer, mEmptyVertexCount, 1, 0, 0);
-	}
-	else 
-	{
-		for (auto objPtr : mObject)
+		VulkanMaterial* mat = reinterpret_cast<VulkanMaterial*>(mMaterialAddr);
+		mat->Update(frameIndex);
+		int descCount;
+		std::vector<VkDescriptorSet> descSetVec = mat->GetDescriptorSet(frameIndex, descCount);
+		VkDescriptorSet worldSet = mWorld->GetWorldParamsSet(mat, frameIndex);
+		if (mObject.empty())
 		{
-			std::vector<VkDescriptorSet> submitDescSetVec = descSetVec;
-			objPtr->Update(frameIndex);
-			VkDescriptorSet objSet = objPtr->GetDescSet(frameIndex);
-			if (objSet != VK_NULL_HANDLE)
-				submitDescSetVec.push_back(objSet);
+			VkDeviceSize offsets[] = { 0 };
+			//vkCmdBindVertexBuffers(commandBuffer, 0, 1, VK_NULL_HANDLE, offsets);
+			std::vector<VkDescriptorSet> submitDescSetVec = mat->GetDescriptorSet(frameIndex, descCount, true);
 			if (worldSet != VK_NULL_HANDLE)
 				submitDescSetVec.push_back(worldSet);
 			vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, submitDescSetVec.size(), submitDescSetVec.data(), 0, nullptr);
-			IMesh::MeshPtr mesh = objPtr->GetMeshPtr();
-			int vertCount = mesh->GetVertexCount();
-			int indCount = mesh->GetIndexCount();
-			int indDataSize = mesh->GetIndexBufferDataSize();
-			VkBuffer* vertBuffer = reinterpret_cast<VkBuffer*>(mesh->GetVertexBufferGPUHandleAddress());
-			VkBuffer* indBuffer = reinterpret_cast<VkBuffer*>(mesh->GetIndexBufferGPUHandleAddress());
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertBuffer, offsets);
-			vkCmdBindIndexBuffer(commandBuffer, *indBuffer, 0, indDataSize == sizeof(UInt16) ? VkIndexType::VK_INDEX_TYPE_UINT16 : VkIndexType::VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(commandBuffer, indCount, 1, 0, 0, 0);
+			vkCmdDraw(commandBuffer, mEmptyVertexCount, 1, 0, 0);
 		}
+		else
+		{
+			for (auto objPtr : mObject)
+			{
+				std::vector<VkDescriptorSet> submitDescSetVec = descSetVec;
+				objPtr->Update(frameIndex);
+				VkDescriptorSet objSet = objPtr->GetDescSet(frameIndex);
+				if (objSet != VK_NULL_HANDLE)
+					submitDescSetVec.push_back(objSet);
+				if (worldSet != VK_NULL_HANDLE)
+					submitDescSetVec.push_back(worldSet);
+				vkCmdBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, submitDescSetVec.size(), submitDescSetVec.data(), 0, nullptr);
+				IMesh::MeshPtr mesh = objPtr->GetMeshPtr();
+				int vertCount = mesh->GetVertexCount();
+				int indCount = mesh->GetIndexCount();
+				int indDataSize = mesh->GetIndexBufferDataSize();
+				VkBuffer* vertBuffer = reinterpret_cast<VkBuffer*>(mesh->GetVertexBufferGPUHandleAddress());
+				VkBuffer* indBuffer = reinterpret_cast<VkBuffer*>(mesh->GetIndexBufferGPUHandleAddress());
+				VkDeviceSize offsets[] = { 0 };
+				vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertBuffer, offsets);
+				vkCmdBindIndexBuffer(commandBuffer, *indBuffer, 0, indDataSize == sizeof(UInt16) ? VkIndexType::VK_INDEX_TYPE_UINT16 : VkIndexType::VK_INDEX_TYPE_UINT32);
+				vkCmdDrawIndexed(commandBuffer, indCount, 1, 0, 0, 0);
+			}
+		}
+	}
+	else
+	{
+		mCustomNodePtr->RecordCommandBuffer(commandBuffer, frameIndex, mPipelineLayout);
 	}
 
 	gPipelineGraphicsSecondaryCommandBufferPool->EndCommandBuffer(commandBuffer);
 	return commandBuffer;
 }
 
-VulkanRenderingNode::VulkanRenderingNode(RenderingNodeDesc desc, VkRenderPass renderPass, VkPipelineColorBlendStateCreateInfo blendState)
+VulkanRenderingNode::VulkanRenderingNode(RenderingNodeDesc desc, VkRenderPass renderPass, VkPipelineColorBlendStateCreateInfo blendState, int width, int height)
 {
-	CreatePipeline(desc, renderPass, blendState);
+	CreatePipeline(desc, renderPass, blendState, width, height);
 	mMaterialAddr = desc.MaterialAddr;
 	mObject = desc.Object;
 	mEmptyVertexCount = desc.EmptyVertexCount;
 	GenerateCommandBuffer();
 	mWorld = desc.World;
+	mCustomNodePtr = desc.CustomNode;
 }
 
 VulkanRenderingNode::~VulkanRenderingNode()

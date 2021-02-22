@@ -103,7 +103,7 @@ void VulkanImage::CreateImage(ImageDesc desc)
 
 	if (desc.Usage & TextureUsageBits::TU_STORAGE )
 	{
-		TranslateImageLayout(VkImageLayout::VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+		TranslateImageLayout(VkImageLayout::VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_ASPECT_COLOR_BIT, desc.MipLevels);
 	}
 
 	ImageViewDesc viewDesc = {};
@@ -114,6 +114,8 @@ void VulkanImage::CreateImage(ImageDesc desc)
 	viewDesc.LayerCount = desc.ArrayLayers;
 	viewDesc.BaseMipLevel = 0;
 	viewDesc.MipLevelCount = desc.MipLevels;
+	mMipMapCount = viewDesc.MipLevelCount;
+	
 	viewDesc.ImageHandleAddr = reinterpret_cast<char*>(&mImage);
 	mImageView = std::make_shared<VulkanImageView>(viewDesc);
 	mImageViewDesc = viewDesc;
@@ -173,6 +175,13 @@ void VulkanImage::TranslateImageLayout(VkCommandBuffer commandBuffer, VkImageLay
 		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	}
+	else if (barrier.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && barrier.newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+	}
 	else if (barrier.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && barrier.newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
 	{
 		barrier.srcAccessMask = 0;
@@ -208,6 +217,13 @@ void VulkanImage::TranslateImageLayout(VkCommandBuffer commandBuffer, VkImageLay
 		sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	}
+	else if (barrier.oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && barrier.newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	}
 	else
 	{
 		throw "Unexpected layout transition";
@@ -231,6 +247,11 @@ void VulkanImage::TranslateImageLayout(VkImageLayout newLayout, VkImageAspectFla
 	VkCommandBuffer commandBuffer = gGraphicsCommonCommandBufferPool->BeginSingleTimeCommandBuffer(true);
 	TranslateImageLayout(commandBuffer, newLayout, aspect, mipLevels);
 	gGraphicsCommonCommandBufferPool->EndSingleTimeCommandBuffer(commandBuffer);
+}
+
+void VulkanImage::SetImageLayout(VkImageLayout imageLayout)
+{
+	mImageLayout = imageLayout;
 }
 
 void VulkanImage::GenerateMipMap(UInt32 Width, UInt32 Height, UInt32 MipLevels)
@@ -313,7 +334,7 @@ void VulkanImage::AddImageView(std::string formatName)
 		mFormatImageViewMap[formatName].resize(mImageViewDesc.MipLevelCount);
 		ImageViewDesc viewDesc = mImageViewDesc;
 		viewDesc.Format = ResourceCreator::GetInnerImageDataFormat(formatName);		
-		for (int i = 0; i < viewDesc.MipLevelCount; i ++)
+		for (int i = 0; i < mImageViewDesc.MipLevelCount; i ++)
 		{
 			viewDesc.BaseMipLevel = i;
 			viewDesc.MipLevelCount = 1;
@@ -345,5 +366,5 @@ char* VulkanImage::GetSamplerHandleAddress()
 
 int VulkanImage::GetMipMapLevelCount()
 {
-	return 0;
+	return mMipMapCount;
 }

@@ -15,7 +15,7 @@ public:
 
 public:
 	std::shared_ptr<VulkanImage> GetImage(int frameIndex) { return std::dynamic_pointer_cast<VulkanImage>(mImages[frameIndex]); };
-	void TranslateAttachmentImage(int frameIndex, VkCommandBuffer commandBuffer);
+	void TranslateAttachmentImage(int frameIndex, VkImageLayout layout);
 
 private:
 	std::vector<VulkanImage::ImagePtr> mImages;

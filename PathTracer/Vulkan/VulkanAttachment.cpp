@@ -25,10 +25,8 @@ VulkanAttachment::~VulkanAttachment()
 {
 }
 
-void VulkanAttachment::TranslateAttachmentImage(int frameIndex, VkCommandBuffer commandBuffer)
+void VulkanAttachment::TranslateAttachmentImage(int frameIndex, VkImageLayout layout)
 {
-	if (mIsColor)
-	{
-		std::dynamic_pointer_cast<VulkanImage>(mImages[frameIndex])->TranslateImageLayout(commandBuffer, VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-	}
+	if(mIsColor)
+		std::dynamic_pointer_cast<VulkanImage>(mImages[frameIndex])->SetImageLayout(layout);
 }

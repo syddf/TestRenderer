@@ -6,11 +6,15 @@
 #include "./../WorldCommon/WorldObject.h"
 #include "./../WorldCommon/World.h"
 
+class VulkanComputeNode;
+
 struct ComputeNodeDesc
 {
 	char* MaterialAddr;
 	World* World;
 	Vec3 Invocation;
+
+	std::shared_ptr<VulkanComputeNode> ComputeNode = nullptr;
 };
 
 class VulkanComputeNode

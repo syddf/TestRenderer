@@ -29,9 +29,6 @@ VulkanMaterial::VulkanMaterial(VulkanMaterialShader computeMaterialShader, std::
 
 VulkanMaterial::VulkanMaterial(VulkanMaterialShader materialShader, std::string shaderGroupName, MaterialMode materialMode)
 {
-	assert(materialShader.VertexShader != nullptr);
-	assert(materialShader.FragmentShader != nullptr);
-	assert(materialShader.GeometryShader != nullptr);
 	assert(materialShader.ComputeShader == nullptr);
 	InitMaterial(materialShader, shaderGroupName, materialMode);
 	mComputeMaterial = false;
@@ -319,7 +316,7 @@ void VulkanMaterial::CreateVulkanDescSet()
 
 void VulkanMaterial::CreatePushConstantRange()
 {
-	auto AddPushConstantRange = [&](VulkanShader::VulkanShaderPtr shaderPtr, VkPipelineStageFlagBits stageFlag)->void
+	auto AddPushConstantRange = [&](VulkanShader::VulkanShaderPtr shaderPtr, VkShaderStageFlagBits stageFlag)->void
 	{
 		if (shaderPtr == nullptr)
 			return;
@@ -327,27 +324,30 @@ void VulkanMaterial::CreatePushConstantRange()
 		VkPushConstantRange range = {};
 		range.stageFlags = stageFlag;
 		if (shaderParams.PushConstantVec.empty()) return;
+		int offset = MAXF;
+		int size = -MAXF;
 		for (auto pushConstantInfo : shaderParams.PushConstantVec)
 		{
-			range.offset = pushConstantInfo.offset;
+			offset = std::min(offset, pushConstantInfo.offset);
 			if (pushConstantInfo.format == "float+4")
-				range.size = 16;
+				size = std::max(size, pushConstantInfo.offset + 16);
 			else if (pushConstantInfo.format == "float+3")
-				range.size = 12; 
+				size = std::max(size, pushConstantInfo.offset + 12);
 			else if (pushConstantInfo.format == "matrix")
-				range.size = 64;
+				size = std::max(size, pushConstantInfo.offset + 64);
 			else if (pushConstantInfo.format == "float")
-				range.size = 4;
+				size = std::max(size, pushConstantInfo.offset + 4);
 			else if (pushConstantInfo.format == "int")
-				range.size = 4;
-			mPushConstantRange.push_back(range);
+				size = std::max(size, pushConstantInfo.offset + 4);
 		}
+		range.size = size - offset;
+		mPushConstantRange.push_back(range);
 	};
 
-	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.VertexShader), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
-	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.GeometryShader), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT);
-	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.FragmentShader), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.ComputeShader), VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.VertexShader), VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT);
+	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.GeometryShader), VkShaderStageFlagBits::VK_SHADER_STAGE_GEOMETRY_BIT);
+	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.FragmentShader), VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT);
+	AddPushConstantRange(std::static_pointer_cast<VulkanShader>(mShader.ComputeShader), VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT);
 
 }
 
@@ -575,7 +575,7 @@ std::vector<VkDescriptorSet> VulkanMaterial::GetDescriptorSet(int frameIndex, in
 
 void VulkanMaterial::SetFloat4(std::string paramName, Vec4 value)
 {
-	assert(mParams.Vec4Params.find(paramName) != mParams.Vec4Params.end());
+	//assert(mParams.Vec4Params.find(paramName) != mParams.Vec4Params.end());
 	mParams.Vec4Params[paramName].Value = value;
 	for (int i = 0; i < mConstantBufferDirty.size(); i++)
 		mConstantBufferDirty[i] = true;
@@ -583,7 +583,7 @@ void VulkanMaterial::SetFloat4(std::string paramName, Vec4 value)
 
 void VulkanMaterial::SetFloat3(std::string paramName, Vec3 value)
 {
-	assert(mParams.Vec3Params.find(paramName) != mParams.Vec3Params.end());
+	//assert(mParams.Vec3Params.find(paramName) != mParams.Vec3Params.end());
 	mParams.Vec3Params[paramName].Value = value;
 	for (int i = 0; i < mConstantBufferDirty.size(); i++)
 		mConstantBufferDirty[i] = true;
@@ -591,7 +591,7 @@ void VulkanMaterial::SetFloat3(std::string paramName, Vec3 value)
 
 void VulkanMaterial::SetFloat(std::string paramName, float value)
 {
-	assert(mParams.FloatParams.find(paramName) != mParams.FloatParams.end());
+	//assert(mParams.FloatParams.find(paramName) != mParams.FloatParams.end());
 	mParams.FloatParams[paramName].Value = value;
 	for (int i = 0; i < mConstantBufferDirty.size(); i++)
 		mConstantBufferDirty[i] = true;
@@ -599,7 +599,7 @@ void VulkanMaterial::SetFloat(std::string paramName, float value)
 
 void VulkanMaterial::SetMatrix(std::string paramName, Matrix & matrix)
 {
-	assert(mParams.MatrixParams.find(paramName) != mParams.MatrixParams.end());
+	//assert(mParams.MatrixParams.find(paramName) != mParams.MatrixParams.end());
 	mParams.MatrixParams[paramName].Value = matrix;
 	for (int i = 0; i < mConstantBufferDirty.size(); i++)
 		mConstantBufferDirty[i] = true;

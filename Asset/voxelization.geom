@@ -81,21 +81,11 @@ void main()
 	trianglePlane.xyz = cross(pos[1].xyz - pos[0].xyz, pos[2].xyz - pos[0].xyz);
 	trianglePlane.xyz = normalize(trianglePlane.xyz);
 	trianglePlane.w = -dot(pos[0].xyz, trianglePlane.xyz);
+
 	vec3 texCoord[3];
 	texCoord[0].xy = inTexCoord[0];
 	texCoord[1].xy = inTexCoord[1];
 	texCoord[2].xy = inTexCoord[2];
-    	if (dot(trianglePlane.xyz, vec3(0.0, 0.0, 1.0)) < 0.0)
-    	{
-        	 	vec4 vertexTemp = pos[2];
-        		vec3 texCoordTemp = texCoord[2];
-        
-        		pos[2] = pos[1];
-        		texCoord[2] = texCoord[1];
-    
-        		pos[1] = vertexTemp;
-       		texCoord[1] = texCoordTemp;
-    	}
 
 	vec2 halfPixel = vec2(1.0f / params.voxelDimension);
  	if(trianglePlane.z == 0.0f) return;

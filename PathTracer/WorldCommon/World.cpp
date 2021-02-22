@@ -120,6 +120,17 @@ void World::Update(int frameIndex)
 	Matrix view, proj;
 	mMainCamera.GetViewTransformMatrix(view, proj);
 
+	Light mainLight;
+	mainLight.mDirection = Vec3(-0.04379, 0.98027, 0.19275);
+	mainLight.mPosition = Vec3(1.0f, 1.0f, 1.0f);
+	mainLight.mDiffuse = Vec3(1.0f, 1.0f, 1.0f);
+	mainLight.mSpecular = Vec3(1.0f, 1.0f, 1.0f);
+
+	Matrix lightView, lightProj;
+	mainLight.GetLightCameraViewProj(mMinPoint, mMaxPoint, lightView, lightProj);
+
+	Vec2 shadowExponentsValue = Vec2(40.0f, 5.0f);
+
 	for (int i = 0; i < 3; i++)
 	{
 		orthViewProjMatrix[i] = projection * orthViewProjMatrix[i];
@@ -143,11 +154,20 @@ void World::Update(int frameIndex)
 		{
 			SetParam(floatParam, "voxelSize", voxelSize);
 			SetParam(floatParam, "voxelDimension", voxelDimension);
+
+			SetParam(floatParam, "lightCount", 1);
+			SetParam(floatParam, "expCx", shadowExponentsValue.x);
+			SetParam(floatParam, "expCy", shadowExponentsValue.y);
 		}
 
 		for (auto& float3Param : params.Vec3Params)
 		{
 			SetParam(float3Param, "worldMinPoint", mMinPoint);
+			SetParam(float3Param, "uCameraPosition", point);
+			SetParam(float3Param, "lights[0].diffuse", mainLight.mDiffuse);
+			SetParam(float3Param, "lights[0].specular", mainLight.mSpecular);
+			SetParam(float3Param, "lights[0].position", mainLight.mPosition);
+			SetParam(float3Param, "lights[0].direction", mainLight.mDirection);
 		}
 
 		for (auto& matParam : params.MatrixParams)
@@ -160,6 +180,8 @@ void World::Update(int frameIndex)
 			SetParam(matParam, "DirectionInverseViewProjection[2]", orthViewProjInverseMatrix[2]);
 			SetParam(matParam, "view", view);
 			SetParam(matParam, "proj", proj);
+			SetParam(matParam, "lightView", lightView);
+			SetParam(matParam, "lightProj", lightProj);
 		}
 
 		if (needUpdate)
@@ -223,7 +245,7 @@ void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 				desc.ImageData = nullptr;
 				for (auto& innerMipStr : sNeedMipInnerTextureName)
 				{
-					if (innerMipStr.find(image.first) != innerMipStr.npos)
+					if (image.first.find(innerMipStr) != image.first.npos)
 					{
 						desc.MipLevels = static_cast<UInt32>(std::floor(std::log2(std::max(desc.Width, desc.Height) + 1)));
 					}

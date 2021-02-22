@@ -13,6 +13,7 @@ public:
 	void CreateImage(ImageDesc desc);
 	void TranslateImageLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout, VkImageAspectFlags aspect, UInt32 mipLevels);
 	void TranslateImageLayout(VkImageLayout newLayout, VkImageAspectFlags aspect, UInt32 mipLevels);
+	void SetImageLayout(VkImageLayout imageLayout);
 	void GenerateMipMap(UInt32 Width, UInt32 Height, UInt32 MipLevels);
 	void AddImageView(std::string formatName);
 	char* GetGPUImageHandleAddress();
@@ -22,6 +23,7 @@ public:
 	int GetMipMapLevelCount();
 
 private:
+	int mMipMapCount;
 	VkImage mImage;
 	VkDeviceMemory mImageMemory;
 	VkSampler mSampler;

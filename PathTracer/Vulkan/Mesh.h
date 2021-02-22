@@ -4,6 +4,15 @@
 #include "Buffer.h"
 #include "./../../AssetImporter/ImportSceneData.h"
 
+struct DefaultMeshStructure
+{
+	Vec3 Position;
+	Vec3 Normal;
+	Vec3 Tangent;
+	Vec3 BiTangent;
+	Vec2 TexCoord;
+};
+
 class VulkanMeshData
 {
 public:
@@ -11,7 +20,7 @@ public:
 	using MeshChannel = ImportMeshData::MeshDataChannel;
 
 public:
-	IMesh::MeshPtr ExportVulkanMesh(std::vector<MeshChannel>& channels, int meshIndex);
+	IMesh::MeshPtr ExportVulkanMesh(int meshIndex);
 
 private:
 	template<MeshChannel channel>
@@ -49,4 +58,18 @@ private:
 	int mVertexCount;
 	int mIndexCount;
 	int mIndexDataSize;
+};
+
+class VulkanMeshInstance
+{
+public:
+	using MeshChannel = ImportMeshData::MeshDataChannel;
+	using MeshInstancePtr = std::shared_ptr<VulkanMeshInstance>;
+	VulkanMeshInstance(IMesh::MeshPtr meshPtr, std::vector<MeshChannel>& channels);
+
+
+	IMesh::MeshPtr GetMeshPtr() { return mMeshPtr; }
+private:
+	IMesh::MeshPtr mMeshPtr;
+	std::vector<MeshChannel> mMeshChannels;
 };

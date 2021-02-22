@@ -14,6 +14,7 @@
 #include "Vulkan/PresentEngine.h"
 #include "Vulkan/Scene.h"
 #include "Vulkan/ComputePass.h"
+#include "CustomNode.h"
 
 #include <stdio.h>
 #include <direct.h>
@@ -28,21 +29,45 @@ VulkanPresentEngine* presentEngine;
 
 void test(VkQueue graphicsQueue, VulkanWindow* window)
 {
-	//auto anistroMaterial = ResourceCreator::CreateMaterial("test4", "D:\\OfflineRenderer\\Asset\\anisoMipMapVolumeComp.data");
+	auto gaussianBlurMaterial = ResourceCreator::CreateMaterial("blur", MaterialMode::Normal, "D:\\OfflineRenderer\\Asset\\quadVert.data", "D:\\OfflineRenderer\\Asset\\gaussianBlurFrag.data", "");
+	auto anistroVolumeMaterial = ResourceCreator::CreateMaterial("test5", "D:\\OfflineRenderer\\Asset\\anisoMipMapVolumeComp.data");
+	auto anistroBaseMaterial = ResourceCreator::CreateMaterial("test6", "D:\\OfflineRenderer\\Asset\\anisoMipMapBaseComp.data");
 	auto computeMaterial = ResourceCreator::CreateMaterial("test4", "D:\\OfflineRenderer\\Asset\\clearVoxelMapComp.data");
+	auto injectRadianceMaterial = ResourceCreator::CreateMaterial("test7", "D:\\OfflineRenderer\\Asset\\injectRadianceComp.data");
 	//auto ttmaterial = ResourceCreator::CreateMaterial("test3", "D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data");
 	auto tmaterial = ResourceCreator::CreateMaterial("test2", MaterialMode::Normal, "D:\\OfflineRenderer\\Asset\\renderVoxelVert.data", "D:\\OfflineRenderer\\Asset\\renderVoxelFrag.data", "D:\\OfflineRenderer\\Asset\\renderVoxelGeom.data");
 	//auto material = ResourceCreator::CreateMaterial("test1", "D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data");
-	
-	VulkanSceneData * scene = new VulkanSceneData("D:\\Resource\\res\\sponza.data");
-	ResourceCreator::CreateDepthStencilAttachment("DepthStencilAttachment", gScreenWidth, gScreenHeight);
 
+	VulkanSceneData * scene = new VulkanSceneData("D:\\Resource\\res\\sponza.data");
+
+	scene->AddUpdateMaterial("test2");
+	scene->AddUpdateMaterial("test4");
+	scene->AddUpdateMaterial("test5");
+	scene->AddUpdateMaterial("test6");
+	scene->AddUpdateMaterial("test7");
+	scene->AddUpdateMaterial("blur");
+
+	ResourceCreator::CreateDepthStencilAttachment("DepthStencilAttachment", gScreenWidth, gScreenHeight);
+	ResourceCreator::CreateColorAttachment("ShadowMap", 1024, 1024, TextureFormat::TF_R32G32B32A32SFloat);
+	ResourceCreator::CreateColorAttachment("ShadowMapBlur", 1024, 1024, TextureFormat::TF_R32G32B32A32SFloat);
+
+
+	auto shadowAttachment = ResourceCreator::GetAttachment("ShadowMap");
+	auto shadowBlurAttachment = ResourceCreator::GetAttachment("ShadowMapBlur");
+	std::vector<IImage::ImagePtr> shadowMapImage = { shadowAttachment->GetImage(0),  shadowAttachment->GetImage(1), shadowAttachment->GetImage(2) };
+	std::vector<IImage::ImagePtr> shadowMapBlurImage = { shadowBlurAttachment->GetImage(0), shadowBlurAttachment->GetImage(1), shadowBlurAttachment->GetImage(2) };
+
+	VulkanRenderingCustomNode::CustomNodePtr blurVertNode = std::make_shared<BlurCustomNode>(gaussianBlurMaterial, scene->GetWorldData().get(), shadowMapImage, shadowMapBlurImage, Vec2(1.0f / 1024.0f, 0.0f));
+
+	VulkanRenderingCustomNode::CustomNodePtr blurHoriNode = std::make_shared<BlurCustomNode>(gaussianBlurMaterial, scene->GetWorldData().get(), shadowMapBlurImage, shadowMapImage, Vec2(0.0f, 1.0f / 1024.0f));
+
+	/*
 	RenderingPipelineNodeDesc voxelizationPass = {};
 	voxelizationPass.NodeName = "voxelization";
 	voxelizationPass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
 	voxelizationPass.AttachToWindowNode = false;
 	voxelizationPass.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data", "Sponza", MaterialMode::NoAttachment);
-	
+
 	RenderingPipelineNodeDesc renderVoxelPass = {};
 	renderVoxelPass.NodeName = "renderVoxel";
 	renderVoxelPass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
@@ -67,7 +92,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	voxelNode.MaterialAddr = (char*)(tmaterial.get());
 	voxelNode.World = scene->GetWorldData().get();
 	renderVoxelPass.RenderingNodeDescVec.push_back(voxelNode);
-	renderVoxelPass.DependingNodeIndex.push_back(0);
+	renderVoxelPass.DependingNodeIndex.push_back(1);
 
 	ComputeNodeDesc cnd = {};
 	cnd.Invocation = Vec3(256, 256, 256);
@@ -78,29 +103,151 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	clearVoxelPass.BindPoint = PipelineBindPoint::BP_COMPUTE;
 	clearVoxelPass.AttachToWindowNode = false;
 	clearVoxelPass.ComputeNodeDescVec.push_back(cnd);
-	clearVoxelPass.DependingNodeIndex.push_back(1);
+	clearVoxelPass.DependingNodeIndex.push_back(2);
 
-	scene->AddUpdateMaterial("test2");
-	scene->AddUpdateMaterial("test4");
+	ComputeNodeDesc mipBaseCnd = {};
+	mipBaseCnd.Invocation = Vec3(256, 256, 256);
+	mipBaseCnd.MaterialAddr = (char*)(anistroBaseMaterial.get());
+	mipBaseCnd.World = scene->GetWorldData().get();
+	RenderingPipelineNodeDesc mipBasePass = {};
+	mipBasePass.NodeName = "mipBase";
+	mipBasePass.BindPoint = PipelineBindPoint::BP_COMPUTE;
+	mipBasePass.AttachToWindowNode = false;
+	mipBasePass.ComputeNodeDescVec.push_back(mipBaseCnd);
+	mipBasePass.DependingNodeIndex.push_back(2);
+
+	ComputeNodeDesc mipVolumeCnd = {};
+	mipVolumeCnd.Invocation = Vec3(256, 256, 256);
+	mipVolumeCnd.MaterialAddr = (char*)(anistroVolumeMaterial.get());
+	mipVolumeCnd.World = scene->GetWorldData().get();
+	mipVolumeCnd.ComputeNode = std::make_shared<VoxelMipMapCustomNode>(mipVolumeCnd);
+	RenderingPipelineNodeDesc mipVolumePass = {};
+	mipVolumePass.NodeName = "mipVolumn";
+	mipVolumePass.BindPoint = PipelineBindPoint::BP_COMPUTE;
+	mipVolumePass.AttachToWindowNode = false;
+	mipVolumePass.ComputeNodeDescVec.push_back(mipVolumeCnd);
+	mipVolumePass.DependingNodeIndex.push_back(3);
+
+	ComputeNodeDesc injectRadianceCnd = {};
+	injectRadianceCnd.Invocation = Vec3(256, 256, 256);
+	injectRadianceCnd.MaterialAddr = (char*)(injectRadianceMaterial.get());
+	injectRadianceCnd.World = scene->GetWorldData().get();
+	RenderingPipelineNodeDesc injectRadiancePass = {};
+	injectRadiancePass.NodeName = "injectRadiance";
+	injectRadiancePass.BindPoint = PipelineBindPoint::BP_COMPUTE;
+	injectRadiancePass.AttachToWindowNode = false;
+	injectRadiancePass.ComputeNodeDescVec.push_back(injectRadianceCnd);
+	injectRadiancePass.DependingNodeIndex.push_back(0);
 
 	std::vector<RenderingPipelineNodeDesc> pipelineNodesVec;
 	pipelineNodesVec.push_back(voxelizationPass);
+	pipelineNodesVec.push_back(injectRadiancePass);
 	pipelineNodesVec.push_back(renderVoxelPass);
+	//pipelineNodesVec.push_back(mipBasePass);
+	//pipelineNodesVec.push_back(mipVolumePass);
 	pipelineNodesVec.push_back(clearVoxelPass);
 
 	auto vulkanPipeline = new VulkanRenderingPipeline();
 	vulkanPipeline->GenerateRenderingGraph(pipelineNodesVec);
+	
+	*/
 
+	RenderingPipelineNodeDesc scenePass = {};
+	scenePass.NodeName = "lightPass";
+	scenePass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
+	scenePass.AttachToWindowNode = true;
+	scenePass.FrameBufferDesc.Width = gScreenWidth;
+	scenePass.FrameBufferDesc.Height = gScreenHeight;
+	scenePass.FrameBufferDesc.AttachmentName.push_back("SwapChainImage");
+	scenePass.FrameBufferDesc.AttachmentName.push_back("DepthStencilAttachment");
+	AttachmentDesc attachDesc;
+	attachDesc.Usage = TextureUsageBits::TU_COLOR_ATTACHMENT;
+	attachDesc.Format = TextureFormat::TF_B8G8R8A8SRGB;
+	attachDesc.LoadOp = AttachmentOperator::AO_CLEAR;
+	attachDesc.StoreOp = AttachmentOperator::AO_STORE;
+	scenePass.FrameBufferLayoutDesc.AttachmentDesc.push_back(attachDesc);
+	scenePass.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data", "", "SponzaSceneLight", MaterialMode::Normal);
+	attachDesc.Usage = TextureUsageBits::TU_DEPTH_STENCIL;
+	attachDesc.Format = TextureFormat::TF_D24US8;
+	scenePass.FrameBufferLayoutDesc.AttachmentDesc.push_back(attachDesc);
+	scenePass.DependingNodeIndex.push_back(2);
+
+	RenderingPipelineNodeDesc shadowPass = {};
+	shadowPass.NodeName = "shadowPass";
+	shadowPass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
+	shadowPass.AttachToWindowNode = false;
+	shadowPass.FrameBufferDesc.Width = 1024;
+	shadowPass.FrameBufferDesc.Height = 1024;
+	shadowPass.FrameBufferDesc.AttachmentName.push_back("ShadowMap");
+	AttachmentDesc shadowAttachDesc;
+	shadowAttachDesc.Usage = TextureUsageBits::TU_COLOR_ATTACHMENT;
+	shadowAttachDesc.Format = TextureFormat::TF_R32G32B32A32SFloat;
+	shadowAttachDesc.LoadOp = AttachmentOperator::AO_CLEAR;
+	shadowAttachDesc.StoreOp = AttachmentOperator::AO_STORE;
+	shadowPass.FrameBufferLayoutDesc.AttachmentDesc.push_back(shadowAttachDesc);
+	shadowPass.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\evsmDepthVert.data", "D:\\OfflineRenderer\\Asset\\evsmDepthFrag.data", "", "SponzaSceneDepth", MaterialMode::Normal);
+
+	RenderingPipelineNodeDesc blurPass = {};
+	blurPass.NodeName = "blurPass";
+	blurPass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
+	blurPass.AttachToWindowNode = false;
+	blurPass.FrameBufferDesc.Width = 1024;
+	blurPass.FrameBufferDesc.Height = 1024;
+	blurPass.FrameBufferDesc.AttachmentName.push_back("ShadowMapBlur");
+	AttachmentDesc blurAttachDesc;
+	blurAttachDesc.Usage = TextureUsageBits::TU_COLOR_ATTACHMENT;
+	blurAttachDesc.Format = TextureFormat::TF_R32G32B32A32SFloat;
+	blurAttachDesc.LoadOp = AttachmentOperator::AO_CLEAR;
+	blurAttachDesc.StoreOp = AttachmentOperator::AO_STORE;
+	blurPass.FrameBufferLayoutDesc.AttachmentDesc.push_back(blurAttachDesc);
+	RenderingNodeDesc blurNode = {};
+	blurNode.EmptyVertexCount = 0;
+	blurNode.MaterialAddr = (char*)(gaussianBlurMaterial.get());
+	blurNode.World = scene->GetWorldData().get();
+	blurNode.CustomNode = blurVertNode;
+	blurPass.RenderingNodeDescVec.push_back(blurNode);
+	blurPass.DependingNodeIndex.push_back(0);
+
+	RenderingPipelineNodeDesc blur2Pass = {};
+	blur2Pass.NodeName = "blur2Pass";
+	blur2Pass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
+	blur2Pass.AttachToWindowNode = false;
+	blur2Pass.FrameBufferDesc.Width = 1024;
+	blur2Pass.FrameBufferDesc.Height = 1024;
+	blur2Pass.FrameBufferDesc.AttachmentName.push_back("ShadowMap");
+	AttachmentDesc blur2AttachDesc;
+	blur2AttachDesc.Usage = TextureUsageBits::TU_COLOR_ATTACHMENT;
+	blur2AttachDesc.Format = TextureFormat::TF_R32G32B32A32SFloat;
+	blur2AttachDesc.LoadOp = AttachmentOperator::AO_CLEAR;
+	blur2AttachDesc.StoreOp = AttachmentOperator::AO_STORE;
+	blur2Pass.FrameBufferLayoutDesc.AttachmentDesc.push_back(blur2AttachDesc);
+	RenderingNodeDesc blur2Node = {};
+	blur2Node.EmptyVertexCount = 0;
+	blur2Node.MaterialAddr = (char*)(gaussianBlurMaterial.get());
+	blur2Node.World = scene->GetWorldData().get();
+	blur2Node.CustomNode = blurHoriNode;
+	blur2Pass.RenderingNodeDescVec.push_back(blur2Node);
+	blur2Pass.DependingNodeIndex.push_back(1);
+	
+	std::vector<RenderingPipelineNodeDesc> scenePipelineNodesVec;
+	scenePipelineNodesVec.push_back(shadowPass);
+	scenePipelineNodesVec.push_back(blurPass);
+	scenePipelineNodesVec.push_back(blur2Pass);
+	scenePipelineNodesVec.push_back(scenePass);
+
+	auto scenePipeline = new VulkanRenderingPipeline();
+	scenePipeline->GenerateRenderingGraph(scenePipelineNodesVec);
+	
 	while (true)
 	{
 		int imageIndex = presentEngine->AcquireImage();
 		scene->UpdateSceneData(imageIndex);
-		auto semaphore = vulkanPipeline->SubmitRenderingCommands(imageIndex, graphicsQueue, presentEngine->GetCurrentFrameRenderFinishFence());
+		auto semaphore = scenePipeline->SubmitRenderingCommands(imageIndex, graphicsQueue, presentEngine->GetCurrentFrameRenderFinishFence());
 		presentEngine->PresentFrame(imageIndex, semaphore);
 		if (window->MainLoop())
 		{
 			vkQueueWaitIdle(graphicsQueue);
-			delete vulkanPipeline;
+			delete scenePipeline;
 			break;
 		}
 	}
@@ -109,8 +256,11 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 
 void compileShader()
 {
+	/*
 	std::vector<std::string> shaderFiles = 
 	{
+		"light.vert",
+		"light.frag",
 		"voxelization.vert",
 		"voxelization.frag",
 		"voxelization.geom",
@@ -119,8 +269,23 @@ void compileShader()
 		"renderVoxel.geom",
 		"clearVoxelMap.comp",
 		"averageVoxelMap.comp",
-		"anisoMipMapVolume.comp"
+		"anisoMipMapBase.comp",
+		"anisoMipMapVolume.comp",
+		"injectRadiance.comp"
 	};
+	*/
+
+	std::vector<std::string> shaderFiles =
+	{
+		"light.vert",
+		"light.frag",
+		"evsmDepth.vert",
+		"evsmDepth.frag",
+		"quad.vert",
+		"gaussianBlur.frag"
+	};
+
+
 	std::vector<std::string> newShaderPathVec;
 	char buffer[MAXPATH];
 	_getcwd(buffer, MAXPATH);

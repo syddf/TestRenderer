@@ -121,6 +121,7 @@ void VulkanSceneData::UpdateSceneData(int frameIndex)
 		material->SetFloat3("lights[0].position", testLight.mPosition);
 		material->SetFloat3("lights[0].direction", testLight.mDirection);		
 		material->SetFloat3("uCameraPosition", mWorldData->GetCameraPosition());
+		material->SetFloat("lightCount", 1.0f);
 		*/
 		/*
 		material->SetFloat("voxelSize", voxelSize);

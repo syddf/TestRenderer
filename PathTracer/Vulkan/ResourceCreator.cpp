@@ -6,6 +6,7 @@ std::map<std::string, IImage::ImagePtr> imageMap;
 std::map<std::string, std::shared_ptr<VulkanMeshData>> meshDataMap;
 std::map<std::string, VulkanAttachment::AttachmentPtr> attachmentMap;
 std::map<std::string, IMesh::MeshPtr> meshMap;
+std::map<std::string, VulkanMeshInstance::MeshInstancePtr> meshInstanceMap;
 std::map<std::string, VulkanMaterial::MaterialPtr> materialMap;
 std::map<std::string, WorldObject::ObjectPtr> objectMap;
 extern UInt32 gScreenWidth;
@@ -146,11 +147,11 @@ VulkanMaterial::MaterialPtr ResourceCreator::CreateMaterial(std::string material
 	return materialMap[materialName];
 }
 
-IMesh::MeshPtr ResourceCreator::CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex, std::string modelName)
+VulkanMeshInstance::MeshInstancePtr ResourceCreator::CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex, std::string modelName)
 {
-	if (meshMap.find(modelName) != meshMap.end())
+	if (meshInstanceMap.find(modelName) != meshInstanceMap.end())
 	{
-		return meshMap[modelName];
+		return meshInstanceMap[modelName];
 	}
 	auto meshData = GetAsset<ImportSceneData>(modelDataFile);
 	auto vertexShader = CreateShaderFromFile(vertexShaderFile);
@@ -158,6 +159,7 @@ IMesh::MeshPtr ResourceCreator::CreateMeshFromFile(std::string modelDataFile, st
 	assert(shaderType == VulkanShaderType::VertexShader);
 	auto& shaderParams = vertexShader->GetShaderParams();
 	std::vector<ImportMeshData::MeshDataChannel> meshChannels;
+
 	for (auto input : shaderParams.InputVec)
 	{
 		if (input.name == "inPosition")
@@ -184,13 +186,39 @@ IMesh::MeshPtr ResourceCreator::CreateMeshFromFile(std::string modelDataFile, st
 	{
 		meshDataMap[modelDataFile] = std::make_shared<VulkanMeshData>(*meshData);
 	}
-	return meshMap[modelName] = meshDataMap[modelDataFile]->ExportVulkanMesh(meshChannels, meshIndex);
+
+	std::string meshFile =  modelDataFile + std::to_string(meshIndex);
+	if (meshMap.find(meshFile) == meshMap.end())
+	{
+		meshMap[meshFile] = meshDataMap[modelDataFile]->ExportVulkanMesh(meshIndex);
+	}
+
+	meshInstanceMap[modelName] = std::make_shared<VulkanMeshInstance>(meshMap[meshFile], meshChannels);
+	return meshInstanceMap[modelName];
+}
+
+VulkanMeshInstance::MeshInstancePtr ResourceCreator::CreateInnerMesh(std::string modelName, std::vector<char>& vertBuffer, std::vector<char>& indBuffer, int vertCount, int indCount)
+{
+	if (meshInstanceMap.find(modelName) != meshInstanceMap.end())
+	{
+		return meshInstanceMap[modelName];
+	}
+	meshMap[modelName] = std::make_shared<VulkanMesh>(vertBuffer, indBuffer, vertCount, indCount);
+	std::vector<ImportMeshData::MeshDataChannel> meshChannels =
+	{
+		ImportMeshData::MeshDataChannel::Position,
+		ImportMeshData::MeshDataChannel::Normal,
+		ImportMeshData::MeshDataChannel::Tangent,
+		ImportMeshData::MeshDataChannel::BiTangent,
+		ImportMeshData::MeshDataChannel::UV0
+	};
+	meshInstanceMap[modelName] = std::make_shared<VulkanMeshInstance>(meshMap[modelName], meshChannels);
+	return meshInstanceMap[modelName];
 }
 
 IMesh::MeshPtr ResourceCreator::GetExportedMesh(std::string meshName)
 {
-	assert(meshMap[meshName] != nullptr);
-	return meshMap[meshName];
+	return meshInstanceMap[meshName]->GetMeshPtr();
 }
 
 VulkanAttachment::AttachmentPtr ResourceCreator::CreateDepthStencilAttachment(std::string name, int width, int height)
@@ -215,7 +243,7 @@ VulkanAttachment::AttachmentPtr ResourceCreator::CreateDepthStencilAttachment(st
 	return newAttach;
 }
 
-VulkanAttachment::AttachmentPtr ResourceCreator::CreateColorAttachment(std::string name, int width, int height)
+VulkanAttachment::AttachmentPtr ResourceCreator::CreateColorAttachment(std::string name, int width, int height, TextureFormat format)
 {
 	if (width == 0 && height == 0)
 	{
@@ -225,10 +253,10 @@ VulkanAttachment::AttachmentPtr ResourceCreator::CreateColorAttachment(std::stri
 	ImageDesc desc = {};
 	desc.Dimension = TextureDimension::Texture2D;
 	desc.Depth = 1;
-	desc.Width = gScreenWidth;
-	desc.Height = gScreenHeight;
+	desc.Width = width;
+	desc.Height = height;
 	desc.MipLevels = 1;
-	desc.Format = TextureFormat::TF_B8G8R8A8SRGB;
+	desc.Format = format;
 	desc.GenerateMipMap = true;
 	desc.ArrayLayers = 1;
 	desc.Usage = TextureUsageBits::TU_COLOR_ATTACHMENT | TextureUsageBits::TU_SHADER_RESOURCE;
@@ -299,7 +327,7 @@ TextureDimension ResourceCreator::GetTextureDimension(TextureTypeEnum texType)
 WorldObject::ObjectPtr ResourceCreator::CreateWorldObject(std::string objectName, std::string materialName, std::string modelName)
 {
 	assert(materialMap.find(materialName) != materialMap.end());
-	assert(meshMap.find(modelName) != meshMap.end());
+	assert(meshInstanceMap.find(modelName) != meshInstanceMap.end());
 	if (objectMap[objectName] != nullptr) return objectMap[objectName];
 	auto obj = std::make_shared<WorldObject>(materialName, modelName, objectName);
 	objectMap.insert(std::make_pair(objectName, obj));

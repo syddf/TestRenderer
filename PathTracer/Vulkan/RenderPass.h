@@ -6,12 +6,20 @@
 #include "./../WorldCommon/World.h"
 #include "ComputePass.h"
 
+class VulkanRenderingCustomNode
+{
+public:
+	using CustomNodePtr = std::shared_ptr<VulkanRenderingCustomNode>;
+	virtual void RecordCommandBuffer(VkCommandBuffer& commandBuffer, int frameIndex, VkPipelineLayout pipelineLayout) = 0;
+};
+
 struct RenderingNodeDesc
 {
 	char* MaterialAddr;
 	std::vector<WorldObject::ObjectPtr> Object;
 	int EmptyVertexCount;
 	World* World;
+	VulkanRenderingCustomNode::CustomNodePtr CustomNode = nullptr;
 };
 
 struct RenderingPipelineNodeDesc
@@ -30,14 +38,15 @@ struct RenderingPipelineNodeDesc
 	bool AffectOtherNode;
 };
 
+
 class VulkanRenderingNode
 {
 public:
-	VulkanRenderingNode(RenderingNodeDesc desc, VkRenderPass renderPass, VkPipelineColorBlendStateCreateInfo blendState);
+	VulkanRenderingNode(RenderingNodeDesc desc, VkRenderPass renderPass, VkPipelineColorBlendStateCreateInfo blendState, int width, int height);
 	~VulkanRenderingNode();
 
 public:
-	void CreatePipeline(RenderingNodeDesc desc, VkRenderPass renderPass, VkPipelineColorBlendStateCreateInfo blendState);
+	void CreatePipeline(RenderingNodeDesc desc, VkRenderPass renderPass, VkPipelineColorBlendStateCreateInfo blendState, int width, int height);
 	void GenerateCommandBuffer();
 	VkCommandBuffer RecordCommandBuffer(int frameIndex, VkRenderPassBeginInfo renderPassInfo);
 
@@ -50,6 +59,7 @@ private:
 	std::vector<VkCommandBuffer> mCommandBuffer;
 	std::vector<bool> mDirty;
 	int mEmptyVertexCount;
+	VulkanRenderingCustomNode::CustomNodePtr mCustomNodePtr;
 };
 
 class VulkanPipelineNode : public IRenderingPipelineNode
@@ -91,5 +101,8 @@ private:
 	std::vector<VkPipelineStageFlags> mWaitFlags;
 	std::vector<VkClearValue> mClearValue;
 	int mColorAttachmentCount;
+	int mAttachmentWidth;
+	int mAttachmentHeight;
 	bool mIsComputeNode;
+	bool mNeedPresent;
 };

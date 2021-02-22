@@ -48,15 +48,25 @@ VkVertexInputBindingDescription VulkanShader::GetInputBindingDescription(std::ve
 		if (inputInfo.format == "float+2")
 			return VK_FORMAT_R32G32_SFLOAT;
 	};
-	int totalSize = 0;
+
+	static std::map<std::string, int> sOffsetMap = 
+	{
+		{ "inPosition", 0 },
+		{ "inNormal", 12 },
+		{ "inTangent", 24 },
+		{ "inBiTangent", 36 },
+		{ "inTexCoord", 48 },
+	};
+
+	int totalSize = 56;
+
 	for (int i = 0; i < mVulkanShaderParams.InputVec.size(); i++)
 	{
 		auto& shaderInputInfo = mVulkanShaderParams.InputVec[i];
 		attributeDescVec[i].binding = 0;
 		attributeDescVec[i].location = i;
-		attributeDescVec[i].offset = totalSize;
+		attributeDescVec[i].offset = sOffsetMap[shaderInputInfo.name];
 		attributeDescVec[i].format = GetInputParamFormat(shaderInputInfo);
-		totalSize += GetInputParamSize(shaderInputInfo);
 	}
 	inputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 	inputBindingDescription.stride = totalSize;

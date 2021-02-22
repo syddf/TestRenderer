@@ -41,7 +41,7 @@ bool InFrustum(vec4 viewPos, ViewFrustum frustum)
 
 void main()
 {
-    if(albedo[0].r == 0.0f && albedo[0].g == 0.0f && albedo[0].b == 0.0f)
+    if(albedo[0].a == 0.0f)
     {
 	return;
     }

@@ -23,10 +23,11 @@ public:
 	static IBuffer::BufferPtr CreateIndexBuffer(char* bufferData, UInt32 bufferSize);
 	static VulkanMaterial::MaterialPtr CreateMaterial(std::string materialName, std::string computeShader);
 	static VulkanMaterial::MaterialPtr CreateMaterial(std::string materialName, MaterialMode mode, std::string vertexShader = "", std::string fragmentShader = "", std::string geometryShader = "");
-	static IMesh::MeshPtr CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex, std::string modelName);
+	static VulkanMeshInstance::MeshInstancePtr CreateMeshFromFile(std::string modelDataFile, std::string vertexShaderFile, int meshIndex, std::string modelName);
+	static VulkanMeshInstance::MeshInstancePtr CreateInnerMesh(std::string modelName, std::vector<char>& vertBuffer, std::vector<char>& indBuffer, int vertCount, int indCount);
 	static IMesh::MeshPtr GetExportedMesh(std::string meshName);
 	static VulkanAttachment::AttachmentPtr CreateDepthStencilAttachment(std::string name, int width, int height);
-	static VulkanAttachment::AttachmentPtr CreateColorAttachment(std::string name, int width, int height);
+	static VulkanAttachment::AttachmentPtr CreateColorAttachment(std::string name, int width, int height, TextureFormat format = TextureFormat::TF_B8G8R8A8SRGB);
 	static VulkanAttachment::AttachmentPtr RenameAttachment(std::string originName, std::string anotherName);
 	static VulkanAttachment::AttachmentPtr GetAttachment(std::string attachName);
 	static void SaveAttachment(std::string attachmentName, VulkanAttachment::AttachmentPtr attachmentPtr);

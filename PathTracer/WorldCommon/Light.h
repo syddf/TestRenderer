@@ -13,6 +13,8 @@ public:
 public:
 	void ResetDefaultDirectionalLight();
 
+	void GetLightCameraViewProj(Vec3 minPoint, Vec3 maxPoint, Matrix& view, Matrix& proj);
+
 public:
 	Vec3 mAmbient;
 	Vec3 mDiffuse;

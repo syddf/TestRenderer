@@ -49,7 +49,7 @@ void VulkanMesh::CreateIndexBuffer(std::vector<char>& indexData, int indexCount)
 	mIndexDataSize = indexData.size() / mIndexCount;
 }
 
-IMesh::MeshPtr VulkanMeshData::ExportVulkanMesh(std::vector<MeshChannel>& channels, int meshIndex)
+IMesh::MeshPtr VulkanMeshData::ExportVulkanMesh(int meshIndex)
 {
 	static std::map<MeshChannel, int> channelSize = 
 	{
@@ -73,6 +73,15 @@ IMesh::MeshPtr VulkanMeshData::ExportVulkanMesh(std::vector<MeshChannel>& channe
 	}
 	
 	int vertStructSize = 0;
+
+	std::vector<MeshChannel> channels = 
+	{
+		MeshChannel::Position,
+		MeshChannel::Normal,
+		MeshChannel::Tangent,
+		MeshChannel::BiTangent,
+		MeshChannel::UV0
+	};
 
 	for (auto channel : channels)
 		vertStructSize += channelSize[channel];
@@ -130,4 +139,10 @@ IMesh::MeshPtr VulkanMeshData::ExportVulkanMesh(std::vector<MeshChannel>& channe
 	}
 
 	return std::make_shared<VulkanMesh>(vertBuffer, indexBuffer, vertCount, indCount);
+}
+
+VulkanMeshInstance::VulkanMeshInstance(IMesh::MeshPtr meshPtr, std::vector<MeshChannel>& channels)
+{
+	mMeshPtr = meshPtr;
+	mMeshChannels = channels;
 }

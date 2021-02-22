@@ -1,5 +1,6 @@
 #version 450
 
+#include "/common.glsl"
 layout(location = 0) in vec3 inWSPosition;
 layout(location = 1) in vec3 inPosition;
 layout(location = 2) in vec3 inNormal;
@@ -20,25 +21,9 @@ layout(set = 2, binding = 1, r32ui) uniform uimage3D voxelNormal_IN;
 layout(set = 2, binding = 2, r32ui) uniform uimage3D voxelEmission_IN;
 layout(set = 2, binding = 3, r8) uniform image3D staticVoxelFlag_IN;
 
-vec4 convRGBA8ToVec4(uint val)
-{
-    return vec4(float((val & 0x000000FF)), 
-    float((val & 0x0000FF00) >> 8U), 
-    float((val & 0x00FF0000) >> 16U), 
-    float((val & 0xFF000000) >> 24U));
-}
-
-uint convVec4ToRGBA8(vec4 val)
-{
-    return (uint(val.w) & 0x000000FF) << 24U | 
-    (uint(val.z) & 0x000000FF) << 16U | 
-    (uint(val.y) & 0x000000FF) << 8U | 
-    (uint(val.x) & 0x000000FF);
-}
-
 void imageAtomicRGBA8AvgEmission(ivec3 coords, vec4 value)
 {
-    value.rgb *= 255.0;
+    value.rgb *= 255;
     uint newVal = convVec4ToRGBA8(value);
     uint prevStoredVal = 0;
     uint curStoredVal;
@@ -63,7 +48,7 @@ void imageAtomicRGBA8AvgAlbedo(ivec3 coords, vec4 value)
 {
     value.rgb *= 255.0;
     uint newVal = convVec4ToRGBA8(value);
-    uint prevStoredVal = 1;
+    uint prevStoredVal = 0;
     uint curStoredVal;
 
     while((curStoredVal = imageAtomicCompSwap(voxelAlbedo_IN, coords, prevStoredVal, newVal)) 
@@ -80,9 +65,9 @@ void imageAtomicRGBA8AvgAlbedo(ivec3 coords, vec4 value)
 
 void imageAtomicRGBA8AvgNormal(ivec3 coords, vec4 value)
 {
-    value.rgb *= 255.0;
+   value.rgb *= 255;
     uint newVal = convVec4ToRGBA8(value);
-    uint prevStoredVal = 1;
+    uint prevStoredVal = 0;
     uint curStoredVal;
 
     while((curStoredVal = imageAtomicCompSwap(voxelNormal_IN, coords, prevStoredVal, newVal)) 
@@ -95,16 +80,6 @@ void imageAtomicRGBA8AvgNormal(ivec3 coords, vec4 value)
         curValF.rgb /= curValF.a;       // Renormalize
         newVal = convVec4ToRGBA8(curValF);
     }
-}
-
-vec3 EncodeNormal(vec3 normal)
-{
-    return normal * 0.5f + vec3(0.5f);
-}
-
-vec3 DecodeNormal(vec3 normal)
-{
-    return normal * 2.0f - vec3(1.0f);
 }
 
 void main()
@@ -123,8 +98,8 @@ void main()
         		vec4 emissive = texture(emissiveMap, inTexCoord.xy);
        		emissive.a = 1.0f;
         		vec4 normal = vec4(EncodeNormal(normalize(inNormal)), 1.0f);
+    		imageAtomicRGBA8AvgAlbedo(position, albedo);
         		imageAtomicRGBA8AvgNormal(position, normal);
-        		imageAtomicRGBA8AvgAlbedo(position, albedo);
         		imageAtomicRGBA8AvgEmission(position, emissive);
         		if(voxelParams.staticVoxelFlag > 0.0f)
         		{
