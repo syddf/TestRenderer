@@ -38,7 +38,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	auto tmaterial = ResourceCreator::CreateMaterial("test2", MaterialMode::Normal, "D:\\OfflineRenderer\\Asset\\renderVoxelVert.data", "D:\\OfflineRenderer\\Asset\\renderVoxelFrag.data", "D:\\OfflineRenderer\\Asset\\renderVoxelGeom.data");
 	//auto material = ResourceCreator::CreateMaterial("test1", "D:\\OfflineRenderer\\Asset\\lightVert.data", "D:\\OfflineRenderer\\Asset\\lightFrag.data");
 
-	VulkanSceneData * scene = new VulkanSceneData("D:\\Resource\\res\\sponza.data");
+	VulkanSceneData * scene = new VulkanSceneData("D:\\crytek-sponza-noflag\\res\\sponza.data");
 
 	scene->AddUpdateMaterial("test2");
 	scene->AddUpdateMaterial("test4");
@@ -50,7 +50,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	ResourceCreator::CreateDepthStencilAttachment("DepthStencilAttachment", gScreenWidth, gScreenHeight);
 	ResourceCreator::CreateColorAttachment("ShadowMap", 1024, 1024, TextureFormat::TF_R32G32B32A32SFloat);
 	ResourceCreator::CreateColorAttachment("ShadowMapBlur", 1024, 1024, TextureFormat::TF_R32G32B32A32SFloat);
-
+	ResourceCreator::CreateDepthStencilAttachment("ShadowDepthStencilAttachment", 1024, 1024);
 
 	auto shadowAttachment = ResourceCreator::GetAttachment("ShadowMap");
 	auto shadowBlurAttachment = ResourceCreator::GetAttachment("ShadowMapBlur");
@@ -179,13 +179,17 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	shadowPass.FrameBufferDesc.Width = 1024;
 	shadowPass.FrameBufferDesc.Height = 1024;
 	shadowPass.FrameBufferDesc.AttachmentName.push_back("ShadowMap");
+	shadowPass.FrameBufferDesc.AttachmentName.push_back("ShadowDepthStencilAttachment");
 	AttachmentDesc shadowAttachDesc;
 	shadowAttachDesc.Usage = TextureUsageBits::TU_COLOR_ATTACHMENT;
 	shadowAttachDesc.Format = TextureFormat::TF_R32G32B32A32SFloat;
 	shadowAttachDesc.LoadOp = AttachmentOperator::AO_CLEAR;
 	shadowAttachDesc.StoreOp = AttachmentOperator::AO_STORE;
 	shadowPass.FrameBufferLayoutDesc.AttachmentDesc.push_back(shadowAttachDesc);
-	shadowPass.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\evsmDepthVert.data", "D:\\OfflineRenderer\\Asset\\evsmDepthFrag.data", "", "SponzaSceneDepth", MaterialMode::Normal);
+	shadowPass.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\evsmDepthVert.data", "D:\\OfflineRenderer\\Asset\\evsmDepthFrag.data", "", "SponzaSceneDepth", MaterialMode::Normal);	
+	shadowAttachDesc.Usage = TextureUsageBits::TU_DEPTH_STENCIL;
+	shadowAttachDesc.Format = TextureFormat::TF_D24US8;
+	shadowPass.FrameBufferLayoutDesc.AttachmentDesc.push_back(shadowAttachDesc);
 
 	RenderingPipelineNodeDesc blurPass = {};
 	blurPass.NodeName = "blurPass";

@@ -100,7 +100,7 @@ void World::Update(int frameIndex)
 {
 	static float theta = 0.0f;
 	Vec3 point = Vec3(300.0f, 200.0f, 0.0f);
-	mMainCamera.SetParams(((float)gScreenWidth) / gScreenHeight, 0.1f, 10000.0f, glm::radians(60.0f), Vec3(cos(theta), 0.0f, sin(theta)), point, Vec3(0, -1, 0));
+	mMainCamera.SetParams(((float)gScreenWidth) / gScreenHeight, 0.1f, 10000.0f, glm::radians(60.0f), Vec3(cosf(10.0), 0.0f, sinf(10.0)), point, Vec3(0, -1, 0));
 	theta += 0.01f;
 
 	float voxelDimension = mWorldParams.VoxelDimension;
@@ -121,7 +121,16 @@ void World::Update(int frameIndex)
 	mMainCamera.GetViewTransformMatrix(view, proj);
 
 	Light mainLight;
-	mainLight.mDirection = Vec3(-0.04379, 0.98027, 0.19275);
+	float x = 60.0f + theta;
+	float y = 0.0f;
+	float z = 0.0f;
+	auto rotationX = glm::angleAxis(x, Vec3(1,0,0));
+	auto rotationY = glm::angleAxis(y, Vec3(0,1,0));
+	auto rotationZ = glm::angleAxis(z, Vec3(0,0,1));
+	// final composite rotation
+	auto rotation = normalize(rotationZ * rotationX * rotationY);
+	auto direction = Vec3(0, 0, 1) * rotation;
+	mainLight.mDirection = glm::normalize(direction);
 	mainLight.mPosition = Vec3(1.0f, 1.0f, 1.0f);
 	mainLight.mDiffuse = Vec3(1.0f, 1.0f, 1.0f);
 	mainLight.mSpecular = Vec3(1.0f, 1.0f, 1.0f);

@@ -164,8 +164,8 @@ void BlurCustomNode::RecordCommandBuffer(VkCommandBuffer & commandBuffer, int fr
 	VkBuffer* vertBuffer = reinterpret_cast<VkBuffer*>(mesh->GetVertexBufferGPUHandleAddress());
 	VkBuffer* indBuffer = reinterpret_cast<VkBuffer*>(mesh->GetIndexBufferGPUHandleAddress());
 
-	std::dynamic_pointer_cast<VulkanImage>(mSrcImage[frameIndex])->TranslateImageLayout(commandBuffer, VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-	std::dynamic_pointer_cast<VulkanImage>(mBlurImage[frameIndex])->TranslateImageLayout(commandBuffer, VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+	std::dynamic_pointer_cast<VulkanImage>(mSrcImage[frameIndex])->TranslateImageLayout(VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+	std::dynamic_pointer_cast<VulkanImage>(mBlurImage[frameIndex])->TranslateImageLayout(VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	VkDeviceSize offsets[] = { 0 };
 
 	int descCount;

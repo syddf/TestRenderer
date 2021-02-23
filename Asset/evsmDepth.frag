@@ -17,7 +17,7 @@ vec2 Depth(float d)
 {
     d = 2.0f * d - 1.0f;
     float pos = exp(smo.expCx * d);
-    float neg = -exp(smo.expCy * d);
+    float neg = -exp(-smo.expCy * d);
     return vec2(pos, neg);
 }
 
@@ -31,6 +31,5 @@ vec4 DepthToEVSM(float d)
 void main()
 {
      vec4 diffuseColor = texture(tDiffuse, fragTexCoord);
-     if(diffuseColor.a <= 0.001f) discard;
      fragColor = DepthToEVSM(gl_FragCoord.z);
 }

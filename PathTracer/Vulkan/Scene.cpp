@@ -41,6 +41,11 @@ std::vector<RenderingNodeDesc> VulkanSceneData::ExportAllRenderingNodeByMaterial
 		renderingNodeVec[matIndex].MaterialAddr = (char*)(mat.get());
 		matIndex++;
 		mUpdateSceneDataMaterialVec.push_back(mat);
+
+		if (mat->HasImageParam("tShadow"))
+		{
+			mat->BindImageAttachment("tShadow", "ShadowMap");
+		}
 	}
 	auto meshCount = meshData->MeshData.MaterialIndex.size();
 	for (int i = 0; i < meshCount; i ++)

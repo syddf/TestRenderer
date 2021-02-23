@@ -82,7 +82,7 @@ void VulkanPipelineNode::GenerateGraphicsNode(const RenderingPipelineNodeDesc & 
 			attachmentDesc[i].stencilLoadOp = GetVKLoadOp(AttachmentOperator::AO_DONT_CARE);
 			attachmentDesc[i].stencilStoreOp = GetVKStoreOp(AttachmentOperator::AO_DONT_CARE);
 			VkClearValue clearValue = {};
-			clearValue.color = { 0.0f, 0.0f, 0.0f, 1.0f };
+			clearValue.color = { 0.0f, 0.0f, 0.0f, 0.0f };
 			mClearValue.push_back(clearValue);
 		}
 		else if(desc.FrameBufferLayoutDesc.AttachmentDesc[i].Usage & TextureUsageBits::TU_DEPTH_STENCIL)
