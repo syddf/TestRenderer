@@ -138,7 +138,7 @@ void World::Update(int frameIndex)
 	Matrix lightView, lightProj;
 	mainLight.GetLightCameraViewProj(mMinPoint, mMaxPoint, lightView, lightProj);
 
-	Vec2 shadowExponentsValue = Vec2(40.0f, 5.0f);
+	Vec2 shadowExponentsValue = Vec2(5.0f, 5.0f);
 
 	for (int i = 0; i < 3; i++)
 	{

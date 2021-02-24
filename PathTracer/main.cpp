@@ -61,7 +61,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 
 	VulkanRenderingCustomNode::CustomNodePtr blurHoriNode = std::make_shared<BlurCustomNode>(gaussianBlurMaterial, scene->GetWorldData().get(), shadowMapBlurImage, shadowMapImage, Vec2(0.0f, 1.0f / 1024.0f));
 
-	/*
+	
 	RenderingPipelineNodeDesc voxelizationPass = {};
 	voxelizationPass.NodeName = "voxelization";
 	voxelizationPass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
@@ -150,8 +150,9 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	auto vulkanPipeline = new VulkanRenderingPipeline();
 	vulkanPipeline->GenerateRenderingGraph(pipelineNodesVec);
 	
-	*/
+	
 
+	/*
 	RenderingPipelineNodeDesc scenePass = {};
 	scenePass.NodeName = "lightPass";
 	scenePass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
@@ -232,7 +233,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	blur2Node.CustomNode = blurHoriNode;
 	blur2Pass.RenderingNodeDescVec.push_back(blur2Node);
 	blur2Pass.DependingNodeIndex.push_back(1);
-	
+
 	std::vector<RenderingPipelineNodeDesc> scenePipelineNodesVec;
 	scenePipelineNodesVec.push_back(shadowPass);
 	scenePipelineNodesVec.push_back(blurPass);
@@ -241,17 +242,18 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 
 	auto scenePipeline = new VulkanRenderingPipeline();
 	scenePipeline->GenerateRenderingGraph(scenePipelineNodesVec);
-	
+		*/
+
 	while (true)
 	{
 		int imageIndex = presentEngine->AcquireImage();
 		scene->UpdateSceneData(imageIndex);
-		auto semaphore = scenePipeline->SubmitRenderingCommands(imageIndex, graphicsQueue, presentEngine->GetCurrentFrameRenderFinishFence());
+		auto semaphore = vulkanPipeline->SubmitRenderingCommands(imageIndex, graphicsQueue, presentEngine->GetCurrentFrameRenderFinishFence());
 		presentEngine->PresentFrame(imageIndex, semaphore);
 		if (window->MainLoop())
 		{
 			vkQueueWaitIdle(graphicsQueue);
-			delete scenePipeline;
+			delete vulkanPipeline;
 			break;
 		}
 	}

@@ -69,7 +69,7 @@ VkVertexInputBindingDescription VulkanShader::GetInputBindingDescription(std::ve
 		attributeDescVec[i].format = GetInputParamFormat(shaderInputInfo);
 	}
 	inputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-	inputBindingDescription.stride = totalSize;
+	inputBindingDescription.stride = mVulkanShaderParams.InputVec.empty() ? 0 : totalSize;
 	inputBindingDescription.binding = 0; // may need to be modified
 	return inputBindingDescription;
 }
