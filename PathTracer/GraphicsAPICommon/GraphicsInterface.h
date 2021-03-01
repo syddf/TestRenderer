@@ -56,7 +56,7 @@ class IBuffer
 public:
 	using BufferPtr = std::shared_ptr<IBuffer>;
 	virtual ~IBuffer() {};
-	virtual void CreateBuffer(BufferDesc desc) = 0;
+	virtual void CreateBuffer(BufferDesc desc, bool staging = false) = 0;
 	virtual char* GetGPUBufferHandleAddress() = 0;
 	virtual int GetBufferSize() = 0;
 };

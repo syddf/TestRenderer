@@ -45,6 +45,7 @@ void VulkanComputeNode::CreateComputePipeline(const ComputeNodeDesc& desc)
 
 void VulkanComputeNode::RecordCommandBuffer(VkCommandBuffer& commandBuffer, int frameIndex)
 {
+	mMaterial->Update(frameIndex);
 	Vec3 localSize = mMaterial->GetComputeLocalSize();
 	int groupSizeX = std::ceilf(mInvocation.x / localSize.x);
 	int groupSizeY = std::ceilf(mInvocation.y / localSize.y);

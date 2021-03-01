@@ -10,8 +10,9 @@ template<typename T>
 void UpdateConstantBufferParam(int frameIndex, int offset, IBuffer::BufferPtr buffer, T& value)
 {
 	char* data;
-	auto memory = std::dynamic_pointer_cast<VulkanBuffer>(buffer)->GetGPUBufferMemory();
-	vkMapMemory(gVulkanDevice, memory, offset, sizeof(T), 0, &((void*)data));
+	int mOffset;
+	auto memory = std::dynamic_pointer_cast<VulkanBuffer>(buffer)->GetGPUBufferMemory(mOffset);
+	vkMapMemory(gVulkanDevice, memory, mOffset + offset, sizeof(T), 0, &((void*)data));
 	memcpy(data, &value, sizeof(T));
 	vkUnmapMemory(gVulkanDevice, memory);
 }
@@ -624,7 +625,8 @@ void VulkanMaterial::BindImageAttachment(std::string paramName, std::string valu
 	assert(mParams.ImageParams.find(paramName) != mParams.ImageParams.end());
 	mParams.ImageParams[paramName].Value = value;
 	mParams.ImageParams[paramName].Attachment = true;
-	mImageDirty.resize(gSwapChainImageCount, true);
+	for(int i = 0; i < mImageDirty.size(); i ++)
+		mImageDirty[i] = true;
 }
 
 void VulkanMaterial::Update(int frameIndex)

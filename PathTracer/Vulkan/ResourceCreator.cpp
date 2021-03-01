@@ -28,7 +28,7 @@ IBuffer::BufferPtr ResourceCreator::CreateStagingBuffer(char* bufferData, UInt32
 	desc.Size = bufferSize;
 	desc.Usage = BufferUsageBits::BU_TRANSFER_SRC;
 
-	IBuffer::BufferPtr stagingBuffer = std::make_shared<VulkanBuffer>(desc);
+	IBuffer::BufferPtr stagingBuffer = std::make_shared<VulkanBuffer>(desc, true);
 	return stagingBuffer;
 }
 
@@ -96,7 +96,7 @@ IBuffer::BufferPtr ResourceCreator::CreateVertexBuffer(char * bufferData, UInt32
 	desc.Size = bufferSize;
 	desc.Usage = BufferUsageBits::BU_VERTEX_BUFFER;
 
-	IBuffer::BufferPtr vertexBuffer = std::make_shared<VulkanBuffer>(desc);
+	IBuffer::BufferPtr vertexBuffer = std::make_shared<VulkanBuffer>(desc, true);
 	return vertexBuffer;
 }
 
@@ -107,7 +107,7 @@ IBuffer::BufferPtr ResourceCreator::CreateIndexBuffer(char * bufferData, UInt32 
 	desc.Size = bufferSize;
 	desc.Usage = BufferUsageBits::BU_INDEX_BUFFER;
 
-	IBuffer::BufferPtr indexBuffer = std::make_shared<VulkanBuffer>(desc);
+	IBuffer::BufferPtr indexBuffer = std::make_shared<VulkanBuffer>(desc, true);
 	return indexBuffer;
 }
 

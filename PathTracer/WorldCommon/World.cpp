@@ -10,8 +10,9 @@ template<typename T>
 void UpdateConstantBufferParam(int frameIndex, int offset, IBuffer::BufferPtr buffer, T& value)
 {
 	char* data;
-	auto memory = std::dynamic_pointer_cast<VulkanBuffer>(buffer)->GetGPUBufferMemory();
-	vkMapMemory(gVulkanDevice, memory, offset, sizeof(T), 0, &((void*)data));
+	int mOffset;
+	auto memory = std::dynamic_pointer_cast<VulkanBuffer>(buffer)->GetGPUBufferMemory(mOffset);
+	vkMapMemory(gVulkanDevice, memory, mOffset + offset, sizeof(T), 0, &((void*)data));
 	memcpy(data, &value, sizeof(T));
 	vkUnmapMemory(gVulkanDevice, memory);
 }
@@ -100,7 +101,7 @@ void World::Update(int frameIndex)
 {
 	static float theta = 0.0f;
 	Vec3 point = Vec3(300.0f, 200.0f, 0.0f);
-	mMainCamera.SetParams(((float)gScreenWidth) / gScreenHeight, 0.1f, 10000.0f, glm::radians(60.0f), Vec3(cosf(10.0), 0.0f, sinf(10.0)), point, Vec3(0, -1, 0));
+	mMainCamera.SetParams(((float)gScreenWidth) / gScreenHeight, 0.1f, 10000.0f, glm::radians(60.0f), Vec3(cosf(theta), 0.0f, sinf(theta)), point, Vec3(0, -1, 0));
 	theta += 0.01f;
 
 	float voxelDimension = mWorldParams.VoxelDimension;
@@ -110,7 +111,7 @@ void World::Update(int frameIndex)
 	float voxelSize = maxLength / voxelDimension;
 	float halfLength = 0.5f * maxLength;
 	Vec3 center = 0.5f * (mMinPoint + mMaxPoint);
-	Matrix projection = glm::ortho(-halfLength, halfLength, -halfLength, halfLength, -maxLength, maxLength);
+	Matrix projection = glm::ortho(-halfLength, halfLength, -halfLength, halfLength, -halfLength, maxLength);
 
 	Matrix orthViewProjMatrix[3];
 	Matrix orthViewProjInverseMatrix[3];
@@ -121,12 +122,12 @@ void World::Update(int frameIndex)
 	mMainCamera.GetViewTransformMatrix(view, proj);
 
 	Light mainLight;
-	float x = 60.0f + theta;
+	float x = 60.0f + 16.5;
 	float y = 0.0f;
 	float z = 0.0f;
-	auto rotationX = glm::angleAxis(x, Vec3(1,0,0));
-	auto rotationY = glm::angleAxis(y, Vec3(0,1,0));
-	auto rotationZ = glm::angleAxis(z, Vec3(0,0,1));
+	auto rotationX = glm::angleAxis(glm::radians(x), Vec3(1,0,0));
+	auto rotationY = glm::angleAxis(glm::radians(y), Vec3(0,1,0));
+	auto rotationZ = glm::angleAxis(glm::radians(z), Vec3(0,0,1));
 	// final composite rotation
 	auto rotation = normalize(rotationZ * rotationX * rotationY);
 	auto direction = Vec3(0, 0, 1) * rotation;
@@ -138,7 +139,7 @@ void World::Update(int frameIndex)
 	Matrix lightView, lightProj;
 	mainLight.GetLightCameraViewProj(mMinPoint, mMaxPoint, lightView, lightProj);
 
-	Vec2 shadowExponentsValue = Vec2(5.0f, 5.0f);
+	Vec2 shadowExponentsValue = Vec2(40.0f, 5.0f);
 
 	for (int i = 0; i < 3; i++)
 	{
@@ -252,6 +253,7 @@ void World::AddMaterialParams(VulkanMaterial::MaterialPtr material)
 				desc.Height = size;
 				desc.Depth = size;
 				desc.ImageData = nullptr;
+				desc.SamplerAddressMode = SamplerAddressMode::SAM_BORDER;
 				for (auto& innerMipStr : sNeedMipInnerTextureName)
 				{
 					if (image.first.find(innerMipStr) != image.first.npos)

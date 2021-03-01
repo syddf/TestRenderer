@@ -105,7 +105,7 @@ void VoxelMipMapCustomNode::CreateMipMapDescriptorSet()
 				std::string mipMapBaseImageName;
 				if (mipMapLevel == 0)
 				{
-					mipMapBaseImageName = std::string("voxelMipMapAlbedoBase_IN[") + std::to_string(arrayIndex) + std::string("]");
+					mipMapBaseImageName = std::string("voxelMipMapAlbedoBase_IN[5]");
 				}
 				else
 				{

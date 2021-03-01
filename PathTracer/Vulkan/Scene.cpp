@@ -118,6 +118,10 @@ void VulkanSceneData::UpdateSceneData(int frameIndex)
 
 	for(auto material : mUpdateSceneDataMaterialVec)
 	{
+		if (material->HasImageParam("tShadow"))
+		{
+			material->BindImageAttachment("tShadow", "ShadowMap");
+		}
 		/*
 		material->SetMatrix("view", viewMat);
 		material->SetMatrix("proj", projMat);

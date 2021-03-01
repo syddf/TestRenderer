@@ -15,7 +15,6 @@ layout(set = 2, binding = 1) uniform ShadowMapBufferObject
 
 vec2 Depth(float d)
 {
-    d = 2.0f * d - 1.0f;
     float pos = exp(smo.expCx * d);
     float neg = -exp(-smo.expCy * d);
     return vec2(pos, neg);
@@ -23,6 +22,7 @@ vec2 Depth(float d)
 
 vec4 DepthToEVSM(float d)
 {
+    d = 2.0f * d - 1.0f;
     vec2 moment1 = Depth(d);
     vec2 moment2 = moment1 * moment1;
     return vec4(moment1, moment2);
@@ -30,6 +30,5 @@ vec4 DepthToEVSM(float d)
 
 void main()
 {
-     vec4 diffuseColor = texture(tDiffuse, fragTexCoord);
      fragColor = DepthToEVSM(gl_FragCoord.z);
 }

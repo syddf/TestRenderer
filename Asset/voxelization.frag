@@ -8,8 +8,6 @@ layout(location = 3) in vec3 inTexCoord;
 layout(location = 4) in vec4 inTriangleAABB;
 
 layout(set = 0, binding = 0) uniform sampler2D tDiffuse;
-layout(set = 0, binding = 1) uniform sampler2D opacityMap;
-layout(set = 0, binding = 2) uniform sampler2D emissiveMap;
 
 layout(set = 1, binding = 1) uniform ObjectParams
 {
@@ -18,31 +16,7 @@ layout(set = 1, binding = 1) uniform ObjectParams
 
 layout(set = 2, binding = 0, r32ui) uniform uimage3D voxelAlbedo_IN;
 layout(set = 2, binding = 1, r32ui) uniform uimage3D voxelNormal_IN;
-layout(set = 2, binding = 2, r32ui) uniform uimage3D voxelEmission_IN;
-layout(set = 2, binding = 3, r8) uniform image3D staticVoxelFlag_IN;
-
-void imageAtomicRGBA8AvgEmission(ivec3 coords, vec4 value)
-{
-    value.rgb *= 255;
-    uint newVal = convVec4ToRGBA8(value);
-    uint prevStoredVal = 0;
-    uint curStoredVal;
-    uint numIterations = 0;
-
-    while((curStoredVal = imageAtomicCompSwap(voxelEmission_IN, coords, prevStoredVal, newVal)) 
-            != prevStoredVal
-            && numIterations < 255)
-    {
-        prevStoredVal = curStoredVal;
-        vec4 rval = convRGBA8ToVec4(curStoredVal);
-        rval.rgb = (rval.rgb * rval.a); // Denormalize
-        vec4 curValF = rval + value;    // Add
-        curValF.rgb /= curValF.a;       // Renormalize
-        newVal = convVec4ToRGBA8(curValF);
-
-        ++numIterations;
-    }
-}
+layout(set = 2, binding = 2, r8) uniform image3D staticVoxelFlag_IN;
 
 void imageAtomicRGBA8AvgAlbedo(ivec3 coords, vec4 value)
 {
@@ -95,12 +69,9 @@ void main()
  	if(opacity > 0.0f)
 	{
 		albedo.a = 1.0f;
-        		vec4 emissive = texture(emissiveMap, inTexCoord.xy);
-       		emissive.a = 1.0f;
         		vec4 normal = vec4(EncodeNormal(normalize(inNormal)), 1.0f);
     		imageAtomicRGBA8AvgAlbedo(position, albedo);
         		imageAtomicRGBA8AvgNormal(position, normal);
-        		imageAtomicRGBA8AvgEmission(position, emissive);
         		if(voxelParams.staticVoxelFlag > 0.0f)
         		{
             			imageStore(staticVoxelFlag_IN, position, vec4(1.0));

@@ -10,6 +10,8 @@ layout(set = 0, binding = 0) uniform EmptyMaterialParams
 	float padding;
 } materialParams;
 
+layout(set = 0, binding = 1) uniform sampler2D tShadow;
+
 layout(set = 1, binding = 0) uniform EmptyObjectParams
 {
 	float padding;
@@ -17,22 +19,33 @@ layout(set = 1, binding = 0) uniform EmptyObjectParams
 
 layout(set = 2, binding = 0) uniform sampler3D voxelAlbedo_IN;
 layout(set = 2, binding = 1, rgba8) uniform image3D voxelNormal_IN;
-layout(set = 2, binding = 2, rgba8) uniform readonly image3D voxelEmission_IN;
-layout(set = 2, binding = 3, rgba8) uniform writeonly image3D voxelRadiance_IN;
+layout(set = 2, binding = 2, rgba8) uniform writeonly image3D voxelRadiance_IN;
 
-layout(set = 2, binding = 4) uniform WorldObject 
+layout(set = 2, binding = 3) uniform WorldObject 
 {
     vec3 uCameraPosition;
     Light lights[4];
     float lightCount;
 } woj;
 
-layout(set = 2, binding = 5) uniform VoxelParams
+layout(set = 2, binding = 4) uniform VoxelParams
 {
     vec3 worldMinPoint;
     float voxelSize;
     float voxelDimension;
 } params;
+
+layout(set = 2, binding = 5) uniform ShadowMapBufferObject
+{
+    float expCx;
+    float expCy;
+} smo;
+
+layout(set = 2, binding = 6) uniform UniformBufferObject 
+{
+    mat4 lightView;
+    mat4 lightProj;
+} ubo;
 
 const float PI = 3.14159265f;
 const float EPSILON = 1e-30;
@@ -52,42 +65,51 @@ vec3 WorldToVoxel(vec3 pos)
     return voxelPos * voxelScale;
 }
 
-float TraceShadow(vec3 position, vec3 direction, float maxTracingDistance) 
+float Chebyshev(vec2 moments, float mean, float minVariance)
 {
-    float k = 0.25f;
-    float voxelTexSize = 1.0f / params.voxelDimension;
-    float dst = voxelTexSize * 2.0f;
-    vec3 samplePos = direction * dst + position;
-    float visibility = 0.0f;
-    float traceSample = 0.0f;
-    while (visibility <= 1.0f && dst <= maxTracingDistance) 
+    if(mean <= moments.x)
     {
-        if (samplePos.x < 0.0f || samplePos.y < 0.0f || samplePos.z < 0.0f
-            || samplePos.x > 1.0f || samplePos.y > 1.0f || samplePos.z > 1.0f) 
-        { 
-            break; 
-        }
-        traceSample = ceil(texture(voxelAlbedo_IN, samplePos).a) * k;
-        if(traceSample > 1.0f - EPSILON) { return 0.0f; }
-        visibility += (1.0f - visibility) * traceSample / dst;
-        dst += voxelTexSize;
-        samplePos = direction * dst + position;
+        return 1.0f;
     }
-    return 1.0f - visibility;
+    else
+    {
+        float variance = moments.y - (moments.x * moments.x);
+        variance = max(variance, minVariance);
+        float d = mean - moments.x;
+        float lit = variance / (variance + (d * d));
+        if(lit < 0.5f) return 0.0f;
+        return (lit - 0.5f) / 0.5f;
+    }
+}
+
+float Visibility(vec3 position)
+{
+    vec4 lsPos = ubo.lightProj * ubo.lightView * vec4(position, 1.0f);
+    if(lsPos.w == 0.0f) return 1.0f;
+    lsPos /= lsPos.w;
+    lsPos.xy = 0.5f * lsPos.xy + vec2(0.5f);
+    vec4 moments = texture(tShadow, lsPos.xy);
+    vec2 wDepth = WarpDepth(lsPos.z - 0.0001f, smo.expCx, smo.expCy);
+    vec2 exponents = vec2(smo.expCx, smo.expCy);
+    vec2 depthScale = 0.0001f * exponents * wDepth;
+    vec2 minVariance = depthScale * depthScale;
+    float positive = Chebyshev(moments.xz, wDepth.x, minVariance.x);
+    float negative = Chebyshev(moments.yw, wDepth.y, minVariance.y);
+    return negative;
 }
 
 vec4 CalculateDirectional(Light light, vec3 normal, vec3 position, vec3 albedo)
 {
     float visibility = 1.0f;
     vec3 voxelPos = WorldToVoxel(position);
-    return vec4(BRDF(light, normal, albedo), 1.0f);
+    visibility = Visibility(position);
+    return vec4(BRDF(light, normal, albedo) * visibility, visibility);
 }
 
 vec4 CalculateDirectLighting(vec3 position, vec3 normal, vec3 albedo)
 {
     normal = normalize(normal);
     float voxelScale = 1.0f / (params.voxelSize * params.voxelDimension);
-    position = position + normal * voxelScale * 0.5f;
     vec4 directLighting = vec4(0.0f, 0.0f, 0.0f, 0.0f);
     vec4 current =  vec4(0.0f); 
     int count = 0;

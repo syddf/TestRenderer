@@ -72,6 +72,12 @@ enum PipelineBindPoint
 	BP_COMPUTE
 };
 
+enum SamplerAddressMode
+{
+	SAM_REPEAT,
+	SAM_BORDER
+};
+
 struct ImageDesc
 {
 	char* ImageData = nullptr;
@@ -84,6 +90,7 @@ struct ImageDesc
 	TextureFormat Format;
 	TextureUsage Usage;
 	bool GenerateMipMap = false;
+	SamplerAddressMode SamplerAddressMode = SAM_REPEAT;
 };
 
 struct BufferDesc

@@ -8,8 +8,9 @@ template<typename T>
 void UpdateConstantBufferParam(int frameIndex, int offset, IBuffer::BufferPtr buffer, T& value)
 {
 	char* data;
-	auto memory = std::dynamic_pointer_cast<VulkanBuffer>(buffer)->GetGPUBufferMemory();
-	vkMapMemory(gVulkanDevice, memory, offset, sizeof(T), 0, &((void*)data));
+	int mOffset;
+	auto memory = std::dynamic_pointer_cast<VulkanBuffer>(buffer)->GetGPUBufferMemory(mOffset);
+	vkMapMemory(gVulkanDevice, memory, mOffset + offset, sizeof(T), 0, &((void*)data));
 	memcpy(data, &value, sizeof(T));
 	vkUnmapMemory(gVulkanDevice, memory);
 }

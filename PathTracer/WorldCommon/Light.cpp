@@ -30,7 +30,7 @@ void Light::GetLightCameraViewProj(Vec3 minPoint, Vec3 maxPoint, Matrix& view, M
 	float length = glm::length(maxPoint - minPoint);
 	float radius = length * 0.5f;
 
-	Vec3 pos = center + mDirection * length;
-	proj = glm::ortho(-radius * 2, radius * 2, -radius * 2, radius * 2, -radius * 2, radius * 2);
+	Vec3 pos = center + mDirection * radius;
+	proj = glm::ortho(-radius, radius, -radius, radius, -radius, 2.0f * radius);
 	view = glm::lookAt(pos, center, Vec3(0, 0, 1));
 }

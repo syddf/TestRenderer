@@ -5,18 +5,23 @@
 extern VkDevice gVulkanDevice;
 extern ITranslationEngine* gTranslateEngine;
 
-VulkanBuffer::VulkanBuffer(BufferDesc desc)
+std::map<VkMemoryPropertyFlags, VkDeviceMemory> VulkanBuffer::sBufferMemory = std::map<VkMemoryPropertyFlags, VkDeviceMemory>();
+std::map<VkMemoryPropertyFlags, int> VulkanBuffer::sBufferMemoryOffset = std::map<VkMemoryPropertyFlags, int>();
+
+VulkanBuffer::VulkanBuffer(BufferDesc desc, bool staging)
 {
-	CreateBuffer(desc);
+	mBufferMemory = VK_NULL_HANDLE;
+	CreateBuffer(desc, staging);
 }
 
 VulkanBuffer::~VulkanBuffer()
 {
-	vkFreeMemory(gVulkanDevice, mBufferMemory, nullptr);
 	vkDestroyBuffer(gVulkanDevice, mBuffer, nullptr);
+	if (mBufferMemory != VK_NULL_HANDLE)
+		vkFreeMemory(gVulkanDevice, mBufferMemory, nullptr);
 }
 
-void VulkanBuffer::CreateBuffer(BufferDesc desc)
+void VulkanBuffer::CreateBuffer(BufferDesc desc, bool staging)
 {
 	VkBufferCreateInfo bufferCreateInfo = {};
 	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -27,23 +32,46 @@ void VulkanBuffer::CreateBuffer(BufferDesc desc)
 
 	VkMemoryRequirements memoryRequire;
 	vkGetBufferMemoryRequirements(gVulkanDevice, mBuffer, &memoryRequire);
-
 	VkMemoryPropertyFlags propertyFlags = GetVKBufferMemoryProperty(desc.Usage);
 	VkMemoryAllocateInfo memAllocInfo = {};
 	memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	memAllocInfo.allocationSize = memoryRequire.size;
 	memAllocInfo.memoryTypeIndex = GetVKMemoryType(memoryRequire.memoryTypeBits, propertyFlags);
-	VKFUNC(vkAllocateMemory(gVulkanDevice, &memAllocInfo, nullptr, &mBufferMemory), "Failed To Allocate Memory.");
-	vkBindBufferMemory(gVulkanDevice, mBuffer, mBufferMemory, 0);
+	memAllocInfo.allocationSize = memoryRequire.size;
+
+	if (staging == false)
+	{
+		if (sBufferMemory.find(propertyFlags) == sBufferMemory.end())
+		{
+			memAllocInfo.allocationSize = 200 * 1024 * 1024;
+			VkDeviceMemory memory;
+			VKFUNC(vkAllocateMemory(gVulkanDevice, &memAllocInfo, nullptr, &memory), "Failed To Allocate Memory.");
+			sBufferMemory[propertyFlags] = memory;
+			sBufferMemoryOffset[propertyFlags] = 0;
+		}
+
+		if (sBufferMemoryOffset[propertyFlags] % memoryRequire.alignment != 0)
+		{
+			sBufferMemoryOffset[propertyFlags] = sBufferMemoryOffset[propertyFlags] / memoryRequire.alignment;
+			sBufferMemoryOffset[propertyFlags]++;
+			sBufferMemoryOffset[propertyFlags] *= memoryRequire.alignment;
+		}
+		vkBindBufferMemory(gVulkanDevice, mBuffer, sBufferMemory[propertyFlags], sBufferMemoryOffset[propertyFlags]);
+	}
+	else
+	{
+		VKFUNC(vkAllocateMemory(gVulkanDevice, &memAllocInfo, nullptr, &mBufferMemory), "Failed To Allocate Memory.");
+		vkBindBufferMemory(gVulkanDevice, mBuffer, mBufferMemory, 0);
+		mOffset = 0;
+	}
 
 	if (desc.BufferData != nullptr)
 	{
 		if (propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
 		{
 			void* data;
-			VKFUNC(vkMapMemory(gVulkanDevice, mBufferMemory, 0, desc.Size, 0, &data), "Map Memory Failed.");
+			VKFUNC(vkMapMemory(gVulkanDevice, staging ? mBufferMemory : sBufferMemory[propertyFlags], staging ? 0 : sBufferMemoryOffset[propertyFlags], desc.Size, 0, &data), "Map Memory Failed.");
 			memcpy(data, desc.BufferData, desc.Size);
-			vkUnmapMemory(gVulkanDevice, mBufferMemory);
+			vkUnmapMemory(gVulkanDevice, staging ? mBufferMemory : sBufferMemory[propertyFlags]);
 		}
 		else if (propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
 		{
@@ -57,6 +85,13 @@ void VulkanBuffer::CreateBuffer(BufferDesc desc)
 			transDesc.CopySize = desc.Size;
 			transEngine->TranslateBufferToBuffer(transDesc);
 		}
+	}
+
+	if (!staging)
+	{
+		mOffset = sBufferMemoryOffset[propertyFlags];
+		sBufferMemoryOffset[propertyFlags] += memoryRequire.size;
+		mFlags = propertyFlags;
 	}
 
 	mBufferSize = desc.Size;

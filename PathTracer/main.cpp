@@ -40,13 +40,6 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 
 	VulkanSceneData * scene = new VulkanSceneData("D:\\crytek-sponza-noflag\\res\\sponza.data");
 
-	scene->AddUpdateMaterial("test2");
-	scene->AddUpdateMaterial("test4");
-	scene->AddUpdateMaterial("test5");
-	scene->AddUpdateMaterial("test6");
-	scene->AddUpdateMaterial("test7");
-	scene->AddUpdateMaterial("blur");
-
 	ResourceCreator::CreateDepthStencilAttachment("DepthStencilAttachment", gScreenWidth, gScreenHeight);
 	ResourceCreator::CreateColorAttachment("ShadowMap", 1024, 1024, TextureFormat::TF_R32G32B32A32SFloat);
 	ResourceCreator::CreateColorAttachment("ShadowMapBlur", 1024, 1024, TextureFormat::TF_R32G32B32A32SFloat);
@@ -56,18 +49,24 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	auto shadowBlurAttachment = ResourceCreator::GetAttachment("ShadowMapBlur");
 	std::vector<IImage::ImagePtr> shadowMapImage = { shadowAttachment->GetImage(0),  shadowAttachment->GetImage(1), shadowAttachment->GetImage(2) };
 	std::vector<IImage::ImagePtr> shadowMapBlurImage = { shadowBlurAttachment->GetImage(0), shadowBlurAttachment->GetImage(1), shadowBlurAttachment->GetImage(2) };
-
 	VulkanRenderingCustomNode::CustomNodePtr blurVertNode = std::make_shared<BlurCustomNode>(gaussianBlurMaterial, scene->GetWorldData().get(), shadowMapImage, shadowMapBlurImage, Vec2(1.0f / 1024.0f, 0.0f));
-
 	VulkanRenderingCustomNode::CustomNodePtr blurHoriNode = std::make_shared<BlurCustomNode>(gaussianBlurMaterial, scene->GetWorldData().get(), shadowMapBlurImage, shadowMapImage, Vec2(0.0f, 1.0f / 1024.0f));
 
-	
+	scene->AddUpdateMaterial("test2");
+	scene->AddUpdateMaterial("test4");
+	scene->AddUpdateMaterial("test5");
+	scene->AddUpdateMaterial("test6");
+	scene->AddUpdateMaterial("test7");
+	scene->AddUpdateMaterial("blur");
+
+
 	RenderingPipelineNodeDesc voxelizationPass = {};
 	voxelizationPass.NodeName = "voxelization";
 	voxelizationPass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
 	voxelizationPass.AttachToWindowNode = false;
 	voxelizationPass.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data", "Sponza", MaterialMode::NoAttachment);
-
+	voxelizationPass.DependingNodeIndex.push_back(2);
+	/*
 	RenderingPipelineNodeDesc renderVoxelPass = {};
 	renderVoxelPass.NodeName = "renderVoxel";
 	renderVoxelPass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
@@ -93,6 +92,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	voxelNode.World = scene->GetWorldData().get();
 	renderVoxelPass.RenderingNodeDescVec.push_back(voxelNode);
 	renderVoxelPass.DependingNodeIndex.push_back(1);
+	*/
 
 	ComputeNodeDesc cnd = {};
 	cnd.Invocation = Vec3(256, 256, 256);
@@ -103,7 +103,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	clearVoxelPass.BindPoint = PipelineBindPoint::BP_COMPUTE;
 	clearVoxelPass.AttachToWindowNode = false;
 	clearVoxelPass.ComputeNodeDescVec.push_back(cnd);
-	clearVoxelPass.DependingNodeIndex.push_back(2);
+	clearVoxelPass.DependingNodeIndex.push_back(7);
 
 	ComputeNodeDesc mipBaseCnd = {};
 	mipBaseCnd.Invocation = Vec3(256, 256, 256);
@@ -114,7 +114,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	mipBasePass.BindPoint = PipelineBindPoint::BP_COMPUTE;
 	mipBasePass.AttachToWindowNode = false;
 	mipBasePass.ComputeNodeDescVec.push_back(mipBaseCnd);
-	mipBasePass.DependingNodeIndex.push_back(2);
+	mipBasePass.DependingNodeIndex.push_back(4);
 
 	ComputeNodeDesc mipVolumeCnd = {};
 	mipVolumeCnd.Invocation = Vec3(256, 256, 256);
@@ -126,7 +126,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	mipVolumePass.BindPoint = PipelineBindPoint::BP_COMPUTE;
 	mipVolumePass.AttachToWindowNode = false;
 	mipVolumePass.ComputeNodeDescVec.push_back(mipVolumeCnd);
-	mipVolumePass.DependingNodeIndex.push_back(3);
+	mipVolumePass.DependingNodeIndex.push_back(5);
 
 	ComputeNodeDesc injectRadianceCnd = {};
 	injectRadianceCnd.Invocation = Vec3(256, 256, 256);
@@ -137,22 +137,8 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	injectRadiancePass.BindPoint = PipelineBindPoint::BP_COMPUTE;
 	injectRadiancePass.AttachToWindowNode = false;
 	injectRadiancePass.ComputeNodeDescVec.push_back(injectRadianceCnd);
-	injectRadiancePass.DependingNodeIndex.push_back(0);
-
-	std::vector<RenderingPipelineNodeDesc> pipelineNodesVec;
-	pipelineNodesVec.push_back(voxelizationPass);
-	pipelineNodesVec.push_back(injectRadiancePass);
-	pipelineNodesVec.push_back(renderVoxelPass);
-	//pipelineNodesVec.push_back(mipBasePass);
-	//pipelineNodesVec.push_back(mipVolumePass);
-	pipelineNodesVec.push_back(clearVoxelPass);
-
-	auto vulkanPipeline = new VulkanRenderingPipeline();
-	vulkanPipeline->GenerateRenderingGraph(pipelineNodesVec);
+	injectRadiancePass.DependingNodeIndex.push_back(3);
 	
-	
-
-	/*
 	RenderingPipelineNodeDesc scenePass = {};
 	scenePass.NodeName = "lightPass";
 	scenePass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
@@ -171,7 +157,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	attachDesc.Usage = TextureUsageBits::TU_DEPTH_STENCIL;
 	attachDesc.Format = TextureFormat::TF_D24US8;
 	scenePass.FrameBufferLayoutDesc.AttachmentDesc.push_back(attachDesc);
-	scenePass.DependingNodeIndex.push_back(2);
+	scenePass.DependingNodeIndex.push_back(6);
 
 	RenderingPipelineNodeDesc shadowPass = {};
 	shadowPass.NodeName = "shadowPass";
@@ -238,22 +224,26 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	scenePipelineNodesVec.push_back(shadowPass);
 	scenePipelineNodesVec.push_back(blurPass);
 	scenePipelineNodesVec.push_back(blur2Pass);
+	scenePipelineNodesVec.push_back(voxelizationPass);
+	scenePipelineNodesVec.push_back(injectRadiancePass);
+	scenePipelineNodesVec.push_back(mipBasePass);
+	scenePipelineNodesVec.push_back(mipVolumePass);
 	scenePipelineNodesVec.push_back(scenePass);
+	scenePipelineNodesVec.push_back(clearVoxelPass);
 
 	auto scenePipeline = new VulkanRenderingPipeline();
 	scenePipeline->GenerateRenderingGraph(scenePipelineNodesVec);
-		*/
 
 	while (true)
 	{
 		int imageIndex = presentEngine->AcquireImage();
 		scene->UpdateSceneData(imageIndex);
-		auto semaphore = vulkanPipeline->SubmitRenderingCommands(imageIndex, graphicsQueue, presentEngine->GetCurrentFrameRenderFinishFence());
+		auto semaphore = scenePipeline->SubmitRenderingCommands(imageIndex, graphicsQueue, presentEngine->GetCurrentFrameRenderFinishFence());
 		presentEngine->PresentFrame(imageIndex, semaphore);
 		if (window->MainLoop())
 		{
 			vkQueueWaitIdle(graphicsQueue);
-			delete vulkanPipeline;
+			delete scenePipeline;
 			break;
 		}
 	}
@@ -262,7 +252,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 
 void compileShader()
 {
-	/*
+	
 	std::vector<std::string> shaderFiles = 
 	{
 		"light.vert",
@@ -279,8 +269,8 @@ void compileShader()
 		"anisoMipMapVolume.comp",
 		"injectRadiance.comp"
 	};
-	*/
-
+	
+	/*
 	std::vector<std::string> shaderFiles =
 	{
 		"light.vert",
@@ -290,7 +280,7 @@ void compileShader()
 		"quad.vert",
 		"gaussianBlur.frag"
 	};
-
+	*/
 
 	std::vector<std::string> newShaderPathVec;
 	char buffer[MAXPATH];
