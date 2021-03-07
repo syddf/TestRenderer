@@ -11,7 +11,7 @@ layout(set = 1, binding = 0) uniform EmptyBuffer
     float empty;
 } eb;
 
-layout(set = 2, binding = 0, rgba8) uniform image3D voxelRadiance_IN;
+layout(set = 2, binding = 0, rgba8) uniform image3D voxelNormal_IN;
 layout(location = 0)out vec4 albedo;
 
 layout(set = 2, binding = 1) uniform VoxelParams
@@ -34,7 +34,7 @@ void main()
     highp int uDimension = int(params.voxelDimension);
     vec3 position = vec3(gl_VertexIndex % uDimension, (gl_VertexIndex / uDimension) % uDimension, gl_VertexIndex / (uDimension * uDimension));
     ivec3 texPos = ivec3(position);
-    vec4 color = imageLoad(voxelRadiance_IN, texPos);
+    vec4 color = imageLoad(voxelNormal_IN, texPos);
     albedo = color;
     gl_Position = vec4(position, 0.0f);
 }

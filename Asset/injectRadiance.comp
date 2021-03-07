@@ -140,7 +140,7 @@ void main()
         vec3 wsPosition = VoxelToWorld(writePos);
         albedo = CalculateDirectLighting(wsPosition, normal, albedo.rgb);
     }
-    imageStore(voxelNormal_IN, writePos, vec4(baseNormal, albedo.a));
+    //imageStore(voxelNormal_IN, writePos, vec4(baseNormal, albedo.a));
     albedo.a = 1.0f;
     imageStore(voxelRadiance_IN, writePos, albedo);
 }

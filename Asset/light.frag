@@ -103,7 +103,7 @@ vec3 NormalMap()
 
 vec3 CalcDirectLighting(Light cLight, vec3 position, vec3 normal, vec3 mDiffuse, vec4 mSpecular, vec3 uCameraPosition)
 {
-    vec3 ambient = vec3(0.5f, 0.5f, 0.5f);
+    vec3 ambient = vec3(0.01f, 0.01f, 0.01f);
     vec3 L = cLight.direction;
     vec3 V = (normalize(uCameraPosition - position)).xyz;
     vec3 H = normalize(L + V);
@@ -118,7 +118,7 @@ vec3 CalcDirectLighting(Light cLight, vec3 position, vec3 normal, vec3 mDiffuse,
     vec3 specular = mSpecular.rgb * cLight.specular * blinnPhong * fresnel;
     vec3 diffuse = mDiffuse.rgb * cLight.diffuse;
     vec3 amb = ambient * mDiffuse.rgb;
-    return diffuse * Visibility(fragPosition);
+    return diffuse * Visibility(fragPosition) + amb;
 }
 
 vec4 AnistropicSample(vec3 coord, vec3 weight, uvec3 face, float lod)
@@ -246,10 +246,10 @@ void main()
     vec3 directLighting = CalcDirectLighting(woj.lights[0], fragPosition, lNormal, fragDiffuse, fragSpecular, woj.uCameraPosition);
     vec4 indirectLighting = CalculateIndirectLighting(fragPosition, fragNormal, fragDiffuse, fragSpecular);
 
-    vec3 compositeLighting = directLighting + indirectLighting.xyz;
+    vec3 compositeLighting = directLighting + indirectLighting.xyz * 2.0f;
     compositeLighting = compositeLighting / (compositeLighting + 1.0f);
     const float gamma = 2.2;
     compositeLighting = pow(compositeLighting, vec3(1.0 / gamma));
 
-    fragColor = vec4(compositeLighting, 1.0f);
+    fragColor = vec4(1.0f - indirectLighting.w, 1.0f - indirectLighting.w, 1.0f - indirectLighting.w , 1.0f);
 }

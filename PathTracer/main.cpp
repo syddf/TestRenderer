@@ -66,7 +66,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	voxelizationPass.AttachToWindowNode = false;
 	voxelizationPass.RenderingNodeDescVec = scene->ExportAllRenderingNodeByMaterial("D:\\OfflineRenderer\\Asset\\voxelizationVert.data", "D:\\OfflineRenderer\\Asset\\voxelizationFrag.data", "D:\\OfflineRenderer\\Asset\\voxelizationGeom.data", "Sponza", MaterialMode::NoAttachment);
 	voxelizationPass.DependingNodeIndex.push_back(2);
-	/*
+	
 	RenderingPipelineNodeDesc renderVoxelPass = {};
 	renderVoxelPass.NodeName = "renderVoxel";
 	renderVoxelPass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
@@ -91,8 +91,8 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	voxelNode.MaterialAddr = (char*)(tmaterial.get());
 	voxelNode.World = scene->GetWorldData().get();
 	renderVoxelPass.RenderingNodeDescVec.push_back(voxelNode);
-	renderVoxelPass.DependingNodeIndex.push_back(1);
-	*/
+	renderVoxelPass.DependingNodeIndex.push_back(6);
+	
 
 	ComputeNodeDesc cnd = {};
 	cnd.Invocation = Vec3(256, 256, 256);
@@ -138,7 +138,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	injectRadiancePass.AttachToWindowNode = false;
 	injectRadiancePass.ComputeNodeDescVec.push_back(injectRadianceCnd);
 	injectRadiancePass.DependingNodeIndex.push_back(3);
-	
+	/*
 	RenderingPipelineNodeDesc scenePass = {};
 	scenePass.NodeName = "lightPass";
 	scenePass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
@@ -158,7 +158,7 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	attachDesc.Format = TextureFormat::TF_D24US8;
 	scenePass.FrameBufferLayoutDesc.AttachmentDesc.push_back(attachDesc);
 	scenePass.DependingNodeIndex.push_back(6);
-
+	*/
 	RenderingPipelineNodeDesc shadowPass = {};
 	shadowPass.NodeName = "shadowPass";
 	shadowPass.BindPoint = PipelineBindPoint::BP_GRAPHICS;
@@ -228,8 +228,10 @@ void test(VkQueue graphicsQueue, VulkanWindow* window)
 	scenePipelineNodesVec.push_back(injectRadiancePass);
 	scenePipelineNodesVec.push_back(mipBasePass);
 	scenePipelineNodesVec.push_back(mipVolumePass);
-	scenePipelineNodesVec.push_back(scenePass);
+	//scenePipelineNodesVec.push_back(scenePass);
+	scenePipelineNodesVec.push_back(renderVoxelPass);
 	scenePipelineNodesVec.push_back(clearVoxelPass);
+
 
 	auto scenePipeline = new VulkanRenderingPipeline();
 	scenePipeline->GenerateRenderingGraph(scenePipelineNodesVec);

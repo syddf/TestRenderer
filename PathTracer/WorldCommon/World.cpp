@@ -101,7 +101,7 @@ void World::Update(int frameIndex)
 {
 	static float theta = 0.0f;
 	Vec3 point = Vec3(300.0f, 200.0f, 0.0f);
-	mMainCamera.SetParams(((float)gScreenWidth) / gScreenHeight, 0.1f, 10000.0f, glm::radians(60.0f), Vec3(cosf(theta), 0.0f, sinf(theta)), point, Vec3(0, -1, 0));
+	mMainCamera.SetParams(((float)gScreenWidth) / gScreenHeight, 0.1f, 10000.0f, glm::radians(60.0f), Vec3(-1, 0.0f, 0), point, Vec3(0, -1, 0));
 	theta += 0.01f;
 
 	float voxelDimension = mWorldParams.VoxelDimension;
